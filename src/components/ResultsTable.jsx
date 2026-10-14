@@ -1,5 +1,6 @@
 import {useState} from 'react';
 import Icon from './Icon.jsx';
+import TablePagination from './TablePagination.jsx';
 
 function DetailRow({result}) {
   const [open, setOpen] = useState(false);
@@ -11,11 +12,13 @@ function DetailRow({result}) {
 }
 
 export default function ResultsTable({rows, page, setPage, totalRows}) {
-  const pageSize = 15;
-  const pages = Math.max(1, Math.ceil(rows.length / pageSize));
-  const visible = rows.slice((page - 1) * pageSize, page * pageSize);
+  const [pageSize, setPageSize] = useState(15);
+  const size = pageSize === 'all' ? Math.max(1, rows.length) : pageSize;
+  const pages = Math.max(1, Math.ceil(rows.length / size));
+  const currentPage = Math.min(page, pages);
+  const visible = rows.slice((currentPage - 1) * size, currentPage * size);
   return <><div className="table-scroll"><table><thead><tr><th>PO No.</th><th>Matched GR PO No.</th><th>Vendor code</th><th>Vendor name</th><th>Remarks</th></tr></thead>
     <tbody>{visible.map(row => <DetailRow key={row.id} result={row}/>)}{!visible.length && <tr><td colSpan="5" className="empty-table">No item rows match your search or filter.</td></tr>}</tbody></table></div>
-    <div className="table-footer"><span>{rows.length ? `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, rows.length)} of ${rows.length}` : '0'} item rows{rows.length !== totalRows ? ` · ${totalRows} total` : ''}</span><div className="pagination"><button disabled={page === 1} onClick={() => setPage(page - 1)} aria-label="Previous page">←</button><span>Page {page} of {pages}</span><button disabled={page >= pages} onClick={() => setPage(page + 1)} aria-label="Next page">→</button></div></div>
+    <TablePagination count={rows.length} totalCount={totalRows} page={currentPage} pages={pages} pageSize={pageSize} setPage={setPage} onPageSizeChange={value => {setPageSize(value); setPage(1);}} label="PO rows per page"/>
   </>;
 }

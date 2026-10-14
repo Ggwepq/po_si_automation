@@ -18,6 +18,8 @@ References match exact displayed text after trimming surrounding whitespace. Lea
 
 RA export follows the active status filter and search. Choose Matched to export matched references, or choose All and clear search to export all RA rows. Export includes every row in the filtered results, across all preview pages; the button shows the export row count and is disabled when no rows qualify. Other worksheets remain in the workbook.
 
+Both result tables offer 15, 25, 50, 100, or All rows per page. Changing this selection returns to page 1 and affects the preview only.
+
 The export edits the original XLSX archive directly rather than regenerating the workbook. Original fonts, fills, borders, alignment, number formats, column widths, row heights, page settings, themes, and unrelated workbook parts are preserved. Only matched ITEM values are replaced. Filtered exports remove excluded detail rows, compact remaining rows, and adjust worksheet ranges and formulas for deleted rows. Original uploads remain unchanged. ICR is used for lookup only and is never exported.
 
 `src/lib/raMatching.js` owns RA/ICR parsing and matching. `src/lib/raExport.js` preserves source formatting and exports filtered rows. `src/components/RAWorkspace.jsx` owns the RA workflow screen. Tests cover matching, source-format preservation, filtered export, row compaction, formula/range changes, and literal text values.

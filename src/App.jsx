@@ -7,8 +7,19 @@ import ColumnSettings from './components/ColumnSettings.jsx';
 import {readWorkbook, parseSheet, exportResults} from './lib/workbooks.js';
 import {compareWorkbooks, summarize} from './lib/matching.js';
 import {demoWorkbooks} from './lib/demo.js';
+import RAWorkspace from './components/RAWorkspace.jsx';
 
 export default function App() {
+  const [workflow, setWorkflow] = useState(null);
+  return <><div className="workflow-nav"><span className="workflow-brand">PAUS WORKFLOW</span>{workflow && <button onClick={() => setWorkflow(null)}>← Choose workflow</button>}</div>
+    <div hidden={workflow !== null} className="page"><main className="workspace workflow-home"><p className="eyebrow">WORKBOOK AUTOMATION</p><h1>What would you like to automate?</h1><p className="intro">Choose a workflow to get started.</p><div className="workflow-options">
+      <button onClick={() => setWorkflow('po')}><span className="workflow-number">01</span><h2>PO & SI workflow</h2><p>Compare purchase orders with goods receipts and review delivery remarks.</p><span className="workflow-link">Open PO & SI workflow <Icon name="arrow" size={17}/></span></button>
+      <button onClick={() => setWorkflow('ra')}><span className="workflow-number">02</span><h2>RA item matching</h2><p>Match document references to ICR sales invoices and fill the ITEM column.</p><span className="workflow-link">Open RA item matching <Icon name="arrow" size={17}/></span></button>
+    </div><p className="home-note">Your workbooks are processed locally on this device.</p></main></div>
+    <div hidden={workflow !== 'po'}><POWorkspace/></div><div hidden={workflow !== 'ra'}><RAWorkspace/></div></>;
+}
+
+function POWorkspace() {
   const [files, setFiles] = useState({po: null, gr: null});
   const [busy, setBusy] = useState({po: false, gr: false});
   const [error, setError] = useState('');
@@ -44,6 +55,7 @@ export default function App() {
   return <div className="page">
     <main className={`workspace ${ready ? 'has-results' : ''}`}>
       <header className={`workspace-header ${!ready ? 'initial' : ''}`}>
+        <div><p className="eyebrow">PO & SI WORKFLOW</p><h1>Automated SI & PO workflow</h1>{!ready && <p className="intro">Upload purchase orders and goods receipts to check delivery remarks.</p>}</div>
         {ready && <div className="file-pair"><UploadCard kind="po" title="PO Details" data={files.po} busy={busy.po} onUpload={upload} compact/><span className="pair-line"/><UploadCard kind="gr" title="GR Details" data={files.gr} busy={busy.gr} onUpload={upload} compact/></div>}
       </header>
       {error && <div className="error-banner" role="alert"><span>{error}</span><button onClick={() => setError('')} aria-label="Dismiss error"><Icon name="close" size={16}/></button></div>}

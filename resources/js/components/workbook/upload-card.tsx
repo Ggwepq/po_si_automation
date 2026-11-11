@@ -11,9 +11,11 @@ type Props = {
     busy: boolean;
     onSelect: (file: File) => void;
     compact?: boolean;
+    /** File extensions the picker offers, e.g. ['.xlsx', '.csv']. */
+    accept?: string[];
 };
 
-/** Click-or-drop .xlsx picker. Selecting again replaces the loaded file. */
+/** Click-or-drop spreadsheet picker. Selecting again replaces the loaded file. */
 export function UploadCard({
     title,
     subtitle,
@@ -21,6 +23,7 @@ export function UploadCard({
     busy,
     onSelect,
     compact = false,
+    accept = ['.xlsx'],
 }: Props) {
     const input = useRef<HTMLInputElement>(null);
     const [dragging, setDragging] = useState(false);
@@ -54,7 +57,7 @@ export function UploadCard({
             <input
                 ref={input}
                 type="file"
-                accept=".xlsx"
+                accept={accept.join(',')}
                 className="sr-only"
                 aria-label={`Upload ${title}`}
                 disabled={busy}
@@ -107,7 +110,7 @@ export function UploadCard({
                             <span className="text-xs text-muted-foreground">
                                 {loaded
                                     ? `${loaded.rowCount.toLocaleString()} ${loaded.rowLabel ?? 'rows'} · Click to replace`
-                                    : 'or drag and drop · .xlsx'}
+                                    : `or drag and drop · ${accept.join(', ')}`}
                             </span>
                         </>
                     )}

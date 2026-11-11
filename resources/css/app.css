@@ -153,3 +153,31 @@
         @apply bg-background text-foreground;
     }
 }
+
+/* Printed reports: content only, on white paper, without app navigation. */
+@media print {
+    @page {
+        size: A4;
+        margin: 12mm;
+    }
+
+    [data-slot='sidebar'],
+    [data-slot='sidebar-gap'],
+    [data-slot='sidebar-container'],
+    [data-slot='app-header'] {
+        display: none !important;
+    }
+
+    [data-slot='sidebar-inset'] {
+        margin: 0 !important;
+        border: 0 !important;
+        box-shadow: none !important;
+    }
+
+    html,
+    body {
+        background: white !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}

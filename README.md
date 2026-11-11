@@ -55,7 +55,7 @@ php artisan user:create --name="Jane Doe" --email=jane@example.com
 ```
 
 The command asks for the password, so it isn't saved in shell history. Users
-can turn on two-factor authentication or passkeys under **Settings → Security**.
+can turn on two-factor authentication under **Settings → Security**.
 
 ## Workflows
 
@@ -99,12 +99,52 @@ cleared by **Start over** or a page reload.
   filtered out, the remaining rows move up and formulas, ranges, tables and
   charts are adjusted.
 
+## Sales
+
+### Import DSR
+
+1. In the SM Vendor Portal, open **Finance Documents → Daily Sales Report**,
+   filter the dates you need, and export the documents (.xlsx, .xls or .csv).
+2. In the app, go to **Sales → Import DSR** and choose the file.
+3. Check the preview (dates, stores, item lines, total sales), then click
+   **Import**.
+
+Re-importing the same store and date replaces it, so importing overlapping
+files or revised DSRs never counts sales twice. Large files (many months) are
+saved in parts automatically. If an import stops halfway, importing the same
+file again is safe. Every import is listed with who imported it and when.
+
+### Sales report
+
+**Sales → Sales report** opens on the month of the latest imported sales.
+
+- **Periods:** Daily, Weekly (Mon–Sun), Monthly, Quarterly, Yearly, or a Custom
+  range of up to three years. Use the arrows to step to the previous or next
+  period.
+- **Filters:** company (SVI, SSM, SMCo…) and store.
+- **Contents:**
+    - Totals with % change against the previous period: sales (excl. VAT),
+      quantity sold, items sold, stores reporting, average daily sales.
+    - Pie charts: sales share by store, by company and by item.
+    - Daily (or monthly, for long periods) sales trend.
+    - Top 10 selling items, by quantity or by sales.
+    - Every item ranked with quantity, sales, share, average price and number
+      of stores.
+    - Sales by store with each store's best seller, and slow movers when there
+      are more than 20 items.
+- **Excel** downloads every section as a separate sheet. **Print** produces a
+  clean page without the app menus (choose "Save as PDF" to send it).
+
+The DSR has no cost prices, categories, stock or time of sale, so profit,
+category, inventory and hourly reports are not possible from it.
+
 ## Project layout
 
 ```
 app/                      Laravel backend (see AGENTS.md for layering rules)
+app/Domains/Sales/        DSR import and sales report (models, actions, data)
 resources/js/pages/       Inertia pages (thin)
-resources/js/features/    po-matching, ra-matching: components, logic, tests
+resources/js/features/    po-matching, ra-matching, sales: components, logic, tests
 resources/js/components/  shared UI (ui/ = shadcn primitives)
 tests/                    Pest backend tests
 ```
@@ -123,5 +163,6 @@ setup is part of the next phase; the outline is:
 4. Build assets before upload (`npm run build`); the server only serves
    `public/build`.
 5. Production `.env`: `APP_ENV=production`, `APP_DEBUG=false`, HTTPS
-   `APP_URL`, real mail settings for password resets.
+   `APP_URL`, `APP_TIMEZONE=Asia/Manila` (report periods follow it), and real
+   mail settings for password resets. PHP needs the `bcmath` extension.
 6. Add a cron job: `* * * * * php /path/to/artisan schedule:run`.

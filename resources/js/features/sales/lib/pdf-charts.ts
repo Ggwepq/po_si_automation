@@ -2,24 +2,24 @@ import type { jsPDF } from 'jspdf';
 import type { Slice } from './format';
 
 /*
- * Charts drawn directly with jsPDF shapes: vector-sharp at any zoom, small,
- * and independent of the screen theme (always print colours on white).
+ * Pie (donut) charts drawn directly with jsPDF shapes: vector-sharp at any
+ * zoom, small, and independent of the screen theme (print colours on white).
  * Sizes are in millimetres.
  */
 
 /** Print versions of the theme's pastel chart colours; "Others" is grey. */
 export const PDF_COLORS = [
-    '#5b6fc7',
-    '#e3c54f',
-    '#8fa8e0',
-    '#6fbf9f',
-    '#e39a7a',
-    '#a98bd6',
+    '#3f51b5',
+    '#e8b931',
+    '#7f9be0',
+    '#4fae8a',
+    '#e3896a',
+    '#9a7bd0',
+    '#5fb4d3',
 ];
 const OTHERS = '#c9ccd6';
-export const INK = '#2b3150';
+export const INK = '#1f2747';
 export const MUTED = '#6b7190';
-const GRID = '#e3e6ef';
 
 export const pdfMoney = (value: number) =>
     value.toLocaleString('en-PH', {
@@ -33,7 +33,7 @@ export const pdfQty = (value: number) =>
 const sliceColor = (slice: Slice, index: number) =>
     slice.name === 'Others' ? OTHERS : PDF_COLORS[index % PDF_COLORS.length];
 
-/** Fits text into a width, adding "…" when it is cut. */
+/** Fits text into a width, adding "..." when it is cut. */
 export function fit(doc: jsPDF, text: string, width: number): string {
     if (doc.getTextWidth(text) <= width) {
         return text;
@@ -82,6 +82,15 @@ function ringSegment(
     doc.lines(deltas, start[0], start[1], [1, 1], 'F', true);
 }
 
+export type DonutOptions = {
+    radius?: number;
+    /** Amount column in the legend; off for narrow, half-width charts. */
+    showAmount?: boolean;
+    format?: (value: number) => string;
+    /** Short text in the hole, e.g. the total. */
+    centre?: { value: string; label: string };
+};
+
 /** Donut chart with a legend (name, share, amount) to its right. */
 export function donutWithLegend(
     doc: jsPDF,
@@ -89,9 +98,14 @@ export function donutWithLegend(
     x: number,
     y: number,
     width: number,
-    format = pdfMoney,
+    options: DonutOptions = {},
 ): number {
-    const radius = 17;
+    const {
+        radius = 17,
+        showAmount = true,
+        format = pdfMoney,
+        centre,
+    } = options;
     const cx = x + radius;
     const cy = y + radius;
 
@@ -116,7 +130,7 @@ export function donutWithLegend(
                 cx,
                 cy,
                 radius,
-                radius * 0.58,
+                radius * 0.6,
                 angle,
                 angle + sweep,
             );
@@ -125,11 +139,23 @@ export function donutWithLegend(
         angle += sweep;
     });
 
+    if (centre) {
+        doc.setFont('helvetica', 'bold')
+            .setFontSize(radius > 18 ? 9 : 7.5)
+            .setTextColor(INK)
+            .text(centre.value, cx, cy + 0.5, { align: 'center' });
+        doc.setFont('helvetica', 'normal')
+            .setFontSize(6)
+            .setTextColor(MUTED)
+            .text(centre.label, cx, cy + 3.8, { align: 'center' });
+    }
+
     const legendX = x + radius * 2 + 6;
     const legendWidth = width - radius * 2 - 6;
-    let rowY = y + 3;
+    const rowHeight = 5.2;
+    let rowY = cy - ((slices.length - 1) * rowHeight) / 2 + 1;
 
-    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal').setFontSize(7.5);
 
     slices.forEach((slice, index) => {
         doc.setFillColor(sliceColor(slice, index)).circle(
@@ -138,141 +164,33 @@ export function donutWithLegend(
             1.2,
             'F',
         );
-        const amount = format(slice.value);
+        const amount = showAmount ? format(slice.value) : '';
         const share = `${slice.share.toFixed(1)}%`;
-        doc.setTextColor(MUTED).text(
-            share,
-            legendX + legendWidth - doc.getTextWidth(amount) - 3,
-            rowY,
-            { align: 'right' },
-        );
-        doc.setTextColor(INK).text(amount, legendX + legendWidth, rowY, {
+        const amountWidth = showAmount ? doc.getTextWidth(amount) + 3 : 0;
+
+        doc.setTextColor(INK).setFont('helvetica', 'bold');
+        doc.text(share, legendX + legendWidth - amountWidth, rowY, {
             align: 'right',
         });
+        doc.setFont('helvetica', 'normal');
+
+        if (showAmount) {
+            doc.setTextColor(MUTED).text(amount, legendX + legendWidth, rowY, {
+                align: 'right',
+            });
+        }
+
         const nameWidth =
-            legendWidth -
-            doc.getTextWidth(amount) -
-            doc.getTextWidth(share) -
-            10;
-        doc.text(fit(doc, slice.name, nameWidth), legendX + 4, rowY);
-        rowY += 5;
+            legendWidth - amountWidth - doc.getTextWidth(share) - 8;
+        doc.setTextColor(INK).text(
+            fit(doc, slice.name, nameWidth),
+            legendX + 4,
+            rowY,
+        );
+        rowY += rowHeight;
     });
 
     return Math.max(y + radius * 2, rowY) + 2;
 }
 
-/** Horizontal bar chart: label, bar, value. Returns the y below it. */
-export function barChart(
-    doc: jsPDF,
-    rows: { name: string; value: number }[],
-    x: number,
-    y: number,
-    width: number,
-    format: (v: number) => string,
-): number {
-    const labelWidth = 62;
-    const valueWidth = 22;
-    const barArea = width - labelWidth - valueWidth - 4;
-    const max = Math.max(...rows.map((r) => r.value), 0) || 1;
-    const rowHeight = 6.5;
-
-    doc.setFontSize(7.5);
-
-    rows.forEach((row, index) => {
-        const rowY = y + index * rowHeight;
-        const barWidth = Math.max(0.5, (row.value / max) * barArea);
-
-        doc.setTextColor(INK).text(
-            fit(doc, row.name, labelWidth - 2),
-            x,
-            rowY + 4,
-        );
-        doc.setFillColor(PDF_COLORS[0]).roundedRect(
-            x + labelWidth,
-            rowY + 1,
-            barWidth,
-            rowHeight - 2.5,
-            0.8,
-            0.8,
-            'F',
-        );
-        doc.setTextColor(MUTED).text(
-            format(row.value),
-            x + labelWidth + barWidth + 2,
-            rowY + 4,
-        );
-    });
-
-    return y + rows.length * rowHeight + 2;
-}
-
-/** Sales line over time with a light grid and min/mid/max labels. */
-export function trendChart(
-    doc: jsPDF,
-    points: { label: string; value: number }[],
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-): number {
-    const axisWidth = 18;
-    const plotX = x + axisWidth;
-    const plotWidth = width - axisWidth;
-    const plotHeight = height - 8;
-    const max = Math.max(...points.map((p) => p.value), 0) || 1;
-
-    doc.setFontSize(7).setDrawColor(GRID).setLineWidth(0.2);
-
-    [0, 0.5, 1].forEach((fraction) => {
-        const lineY = y + plotHeight - fraction * plotHeight;
-        doc.line(plotX, lineY, plotX + plotWidth, lineY);
-        doc.setTextColor(MUTED).text(
-            pdfMoney(max * fraction).replace('.00', ''),
-            plotX - 2,
-            lineY + 1,
-            { align: 'right' },
-        );
-    });
-
-    if (points.length) {
-        const stepX = points.length > 1 ? plotWidth / (points.length - 1) : 0;
-        const coords = points.map((p, i): [number, number] => [
-            plotX + i * stepX,
-            y + plotHeight - (p.value / max) * plotHeight,
-        ]);
-
-        doc.setDrawColor(PDF_COLORS[0]).setLineWidth(0.6);
-
-        if (coords.length === 1) {
-            doc.setFillColor(PDF_COLORS[0]).circle(
-                coords[0][0] + plotWidth / 2,
-                coords[0][1],
-                1,
-                'F',
-            );
-        } else {
-            coords
-                .slice(1)
-                .forEach(([px, py], i) =>
-                    doc.line(coords[i][0], coords[i][1], px, py),
-                );
-        }
-
-        const labelIndexes = [
-            ...new Set([
-                0,
-                Math.floor((points.length - 1) / 2),
-                points.length - 1,
-            ]),
-        ];
-
-        doc.setTextColor(MUTED);
-        labelIndexes.forEach((i) => {
-            const align =
-                i === 0 ? 'left' : i === points.length - 1 ? 'right' : 'center';
-            doc.text(points[i].label, coords[i][0], y + height, { align });
-        });
-    }
-
-    return y + height + 3;
-}
+export const peso = (value: number) => `PHP ${pdfMoney(value)}`;

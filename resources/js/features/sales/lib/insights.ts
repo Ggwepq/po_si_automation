@@ -1,3 +1,8 @@
+import {
+    distributionGaps,
+    storeConcentration,
+    weekdayWeekendSplit,
+} from './ceo-metrics';
 import { percentChange } from './format';
 import { reconciliationSentence } from './reconciliation';
 import type { DsrCoverage, DsrReconciliation, SalesReport } from './types';
@@ -85,6 +90,51 @@ export function buildInsights(
             title: 'Leading company',
             text: `${leader.company} stores brought in ${leader.share}% of sales (${money(leader.sales)}).`,
             tone: 'neutral',
+        });
+    }
+
+    const split = weekdayWeekendSplit(
+        report.trend.grouping,
+        report.trend.points,
+    );
+
+    if (
+        split &&
+        split.weekday.days > 0 &&
+        split.weekend.days > 0 &&
+        split.weekday.average > 0
+    ) {
+        const lift = Math.round(
+            ((split.weekend.average - split.weekday.average) /
+                split.weekday.average) *
+                100,
+        );
+        insights.push({
+            title: 'Weekends vs weekdays',
+            text: `A weekend day averages ${money(split.weekend.average)} against ${money(split.weekday.average)} on a weekday (${lift >= 0 ? '+' : ''}${lift}%).`,
+            tone: 'neutral',
+        });
+    }
+
+    const reliance = storeConcentration(byStore);
+
+    if (reliance) {
+        insights.push({
+            title: 'Store reliance',
+            text: `The top ${reliance.topCount} of ${reliance.storeCount} stores generate ${reliance.share}% of sales.`,
+            tone: reliance.share >= 50 ? 'warning' : 'neutral',
+        });
+    }
+
+    const opportunity = distributionGaps(items, summary.storeCount).sort(
+        (a, b) => b.potential - a.potential,
+    )[0];
+
+    if (opportunity) {
+        insights.push({
+            title: 'Growth opportunity',
+            text: `${opportunity.item.description} sells in ${opportunity.item.storeCount} of ${summary.storeCount} stores. At its current average of ${money(opportunity.salesPerStore)} per store, the other ${opportunity.missingStores} could add about ${money(opportunity.potential)} (estimate).`,
+            tone: 'positive',
         });
     }
 

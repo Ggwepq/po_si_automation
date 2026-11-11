@@ -1,24 +1,25 @@
 import { jsPDF } from 'jspdf';
-import { autoTable } from 'jspdf-autotable';
-import type { RowInput } from 'jspdf-autotable';
-import { formatTrendLabel, percentChange, topSlices } from './format';
+import { hasPrevious, unitEconomics, weekdayWeekendSplit } from './ceo-metrics';
+import { percentChange, topSlices } from './format';
 import { buildInsights } from './insights';
 import {
     INK,
     MUTED,
-    PDF_COLORS,
-    barChart,
     donutWithLegend,
     pdfMoney,
     pdfQty,
-    trendChart,
+    peso,
 } from './pdf-charts';
-import { RECONCILE_LABELS } from './reconciliation';
+import { ACCENT, HALF, NAVY, PAGE, PdfLayout } from './pdf-layout';
+import type { Tile, Tone } from './pdf-layout';
+import { appendixChapter, productChapter, storeChapter } from './pdf-sections';
+import { issueCount } from './reconciliation';
 import type {
     DsrCoverage,
     DsrReconciliation,
     ReportPeriod,
     SalesReport,
+    SalesTotals,
 } from './types';
 
 export type ReportPdfInput = {
@@ -34,228 +35,280 @@ export type ReportPdfInput = {
     autoPrint?: boolean;
 };
 
-const PAGE = { width: 210, height: 297, margin: 14 };
-const CONTENT = PAGE.width - PAGE.margin * 2;
-const HALF = (CONTENT - 6) / 2;
-const MAX_ITEM_ROWS = 100;
-const MAX_ISSUE_ROWS = 40;
-
-const peso = (value: number) => `PHP ${pdfMoney(value)}`;
+const REPORT_TITLES: Record<ReportPeriod['type'], string> = {
+    daily: 'Daily sales report',
+    weekly: 'Weekly sales report',
+    monthly: 'Monthly sales report',
+    quarterly: 'Quarterly sales report',
+    yearly: 'Annual sales report',
+    custom: 'Sales report',
+};
 
 /**
- * A4 sales report for management: highlights first, then the numbers behind
- * them. Amounts are excl. VAT. Built entirely in the browser.
+ * A4 sales report written for management: a one-page executive summary,
+ * then store performance, product performance and an appendix. Charts are
+ * pies only. Amounts are net of VAT. Built entirely in the browser.
  */
 export function buildReportPdf(input: ReportPdfInput): jsPDF {
     const { report, period, scope } = input;
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
-    let y = PAGE.margin;
+    const page = new PdfLayout(doc);
+    const title = REPORT_TITLES[period.type];
 
     doc.setProperties({
-        title: `Sales Report - ${period.label}`,
+        title: `${title} - ${period.label}`,
         subject: scope,
         creator: 'Sales Management System',
     });
 
-    const ensureSpace = (height: number) => {
-        if (y + height > PAGE.height - 18) {
-            doc.addPage();
-            y = PAGE.margin;
-        }
-    };
+    coverBand(page, input, title);
+    summaryPage(page, input);
+    storeChapter(page, report);
+    productChapter(page, report);
+    appendixChapter(page, input);
+    page.finish(`${title} - ${period.label}`, 'Source: SM Vendor Portal DSR');
 
-    /** `keepWith`: height of the content that must stay on the heading's page. */
-    const heading = (text: string, subtitle?: string, keepWith = 20) => {
-        ensureSpace((subtitle ? 12 : 8) + keepWith);
-        doc.setFont('helvetica', 'bold')
-            .setFontSize(11)
-            .setTextColor(INK)
-            .text(text, PAGE.margin, y + 4);
+    if (input.autoPrint) {
+        doc.autoPrint();
+    }
 
-        if (subtitle) {
-            doc.setFont('helvetica', 'normal')
-                .setFontSize(8)
-                .setTextColor(MUTED)
-                .text(subtitle, PAGE.margin, y + 8.5);
-        }
+    return doc;
+}
 
-        y += subtitle ? 12 : 8;
-        doc.setFont('helvetica', 'normal');
-    };
+function coverBand(page: PdfLayout, input: ReportPdfInput, title: string) {
+    const { doc } = page;
+    const { period } = input;
 
-    const afterTable = () => {
-        const last = (doc as unknown as { lastAutoTable?: { finalY?: number } })
-            .lastAutoTable;
-        y = (last?.finalY ?? y) + 8;
-    };
+    doc.setFillColor(NAVY).rect(0, 0, PAGE.width, 46, 'F');
+    doc.setFillColor(ACCENT).rect(0, 46, PAGE.width, 1.2, 'F');
 
-    const tableStyle = {
-        theme: 'grid' as const,
-        margin: { left: PAGE.margin, right: PAGE.margin },
-        styles: {
-            fontSize: 8,
-            cellPadding: 1.6,
-            textColor: INK,
-            lineColor: '#e3e6ef',
-            lineWidth: 0.2,
-        },
-        headStyles: {
-            fillColor: '#eef1fa',
-            textColor: INK,
-            fontStyle: 'bold' as const,
-        },
-        alternateRowStyles: { fillColor: '#fafbfe' },
-    };
-
-    // Header
     if (input.logo) {
+        doc.setFillColor('#ffffff').roundedRect(
+            PAGE.width - PAGE.margin - 38,
+            11,
+            38,
+            23,
+            2,
+            2,
+            'F',
+        );
         doc.addImage(
             input.logo,
             'PNG',
-            PAGE.width - PAGE.margin - 30,
-            y - 2,
-            30,
-            16.5,
+            PAGE.width - PAGE.margin - 35,
+            13.5,
+            32,
+            17.6,
         );
     }
 
-    doc.setFontSize(8)
-        .setTextColor(MUTED)
-        .text('SALES REPORT', PAGE.margin, y + 2);
-    doc.setFont('helvetica', 'bold')
-        .setFontSize(18)
-        .setTextColor(INK)
-        .text(period.label, PAGE.margin, y + 10);
-    doc.setFont('helvetica', 'normal').setFontSize(8.5).setTextColor(MUTED);
+    doc.setFont('helvetica', 'bold').setFontSize(8.5).setTextColor(ACCENT);
+    doc.text(title.toUpperCase(), PAGE.margin, 15);
+    doc.setFontSize(22)
+        .setTextColor('#ffffff')
+        .text(period.label, PAGE.margin, 25);
+    doc.setFont('helvetica', 'normal').setFontSize(8.5).setTextColor('#d5daf0');
     doc.text(
-        `${scope}  |  ${period.start} to ${period.end}  |  Sales excl. VAT, in PHP`,
+        `${input.scope}  |  ${period.start} to ${period.end}  |  Net sales excl. VAT, in PHP`,
         PAGE.margin,
-        y + 16,
+        32,
     );
     doc.text(
-        `Generated ${new Date(input.generatedAt).toLocaleString('en-PH')}`,
+        `Prepared ${new Date(input.generatedAt).toLocaleString('en-PH')}  |  Park Solutions Inc.`,
         PAGE.margin,
-        y + 20.5,
+        37,
     );
-    y += 25;
-    doc.setDrawColor(PDF_COLORS[0])
-        .setLineWidth(0.6)
-        .line(PAGE.margin, y, PAGE.width - PAGE.margin, y);
-    y += 6;
+    page.y = 54;
+}
 
-    // Executive highlights
-    const insights = buildInsights(report, {
-        previousLabel: period.previous.label,
-        money: peso,
-        qty: pdfQty,
-        coverage: input.coverage,
-        reconciliation: input.reconciliation,
-    });
+/** "+12.3% vs Sep 2026", coloured by direction. */
+function changeNote(
+    now: number,
+    before: number,
+    previous: string,
+    comparable: boolean,
+): Pick<Tile, 'note' | 'tone'> {
+    const pct = comparable ? percentChange(now, before) : null;
 
-    heading('Executive highlights');
-    doc.setFontSize(9);
-
-    for (const insight of insights) {
-        const lines = doc.splitTextToSize(
-            insight.text,
-            CONTENT - 40,
-        ) as string[];
-        ensureSpace(lines.length * 4.4 + 2);
-        doc.setFont('helvetica', 'bold')
-            .setTextColor(INK)
-            .text(insight.title, PAGE.margin, y);
-        doc.setFont('helvetica', 'normal').text(lines, PAGE.margin + 38, y);
-        y += lines.length * 4.4 + 1.6;
+    if (pct === null) {
+        return { note: 'No prior-period data', tone: 'neutral' };
     }
 
-    y += 4;
-
-    // Key figures vs previous period
-    const { summary } = report;
-    const change = (now: number, before: number) => {
-        const pct = percentChange(now, before);
-
-        return pct === null ? '-' : `${pct > 0 ? '+' : ''}${pct}%`;
+    return {
+        note: `${pct > 0 ? '+' : ''}${pct}% vs ${previous}`,
+        tone: pct > 0 ? 'positive' : pct < 0 ? 'negative' : 'neutral',
     };
-    const figures: [string, number, number, (v: number) => string][] = [
-        [
-            'Total sales (PHP)',
-            summary.totalSales,
-            summary.previous.totalSales,
-            pdfMoney,
-        ],
-        ['Quantity sold', summary.totalQty, summary.previous.totalQty, pdfQty],
-        ['Items sold', summary.itemCount, summary.previous.itemCount, String],
-        [
-            'Stores reporting',
-            summary.storeCount,
-            summary.previous.storeCount,
-            String,
-        ],
-        [
-            'Average daily sales (PHP)',
-            summary.averageDailySales,
-            summary.previous.averageDailySales,
-            pdfMoney,
-        ],
-    ];
+}
 
-    heading('Key figures', `Compared with ${period.previous.label}`);
-    autoTable(doc, {
-        ...tableStyle,
-        startY: y,
-        head: [['Measure', period.label, period.previous.label, 'Change']],
-        body: figures.map(([label, now, before, format]) => [
-            label,
-            format(now),
-            format(before),
-            change(now, before),
-        ]),
-        columnStyles: {
-            1: { halign: 'right' },
-            2: { halign: 'right' },
-            3: { halign: 'right' },
-        },
-    });
-    afterTable();
+function countNote(
+    now: number,
+    before: number,
+    previous: string,
+    comparable: boolean,
+): Pick<Tile, 'note' | 'tone'> {
+    if (!comparable) {
+        return { note: 'No prior-period data', tone: 'neutral' };
+    }
 
-    // Charts
-    const chartTitle = (text: string, x: number) =>
-        doc
-            .setFont('helvetica', 'bold')
-            .setFontSize(9.5)
-            .setTextColor(INK)
-            .text(text, x, y)
-            .setFont('helvetica', 'normal');
+    const delta = now - before;
 
-    // Store and item names are long, so those donuts get the full width.
-    const LEGEND_WIDE = 135;
+    return {
+        note:
+            delta === 0
+                ? `Same as ${previous}`
+                : `${delta > 0 ? '+' : ''}${delta} vs ${previous}`,
+        tone: delta > 0 ? 'positive' : delta < 0 ? 'negative' : 'neutral',
+    };
+}
 
-    ensureSpace(50);
-    chartTitle('Sales share by store', PAGE.margin);
-    y += 4;
-    y =
-        donutWithLegend(
-            doc,
-            topSlices(
-                report.byStore,
-                (s) => s.name,
-                (s) => s.sales,
+function dataStatus(input: ReportPdfInput): Tile {
+    const check = input.reconciliation;
+    const gaps = input.coverage?.daysWithoutAnyDsr.length ?? 0;
+
+    if (check?.checked && check.balanced) {
+        return {
+            label: 'Data status',
+            value: 'Verified',
+            note: "Matches SM's DSR Summary",
+            tone: 'positive',
+        };
+    }
+
+    if (check?.checked) {
+        return {
+            label: 'Data status',
+            value: 'Check needed',
+            note: `${issueCount(check)} store-days differ from SM`,
+            tone: 'negative',
+        };
+    }
+
+    if (gaps > 0) {
+        return {
+            label: 'Data status',
+            value: 'Incomplete',
+            note: `${gaps} day${gaps === 1 ? '' : 's'} without any DSR`,
+            tone: 'warning',
+        };
+    }
+
+    return {
+        label: 'Data status',
+        value: 'Not verified',
+        note: "Import SM's DSR Summary to verify",
+        tone: 'warning',
+    };
+}
+
+function kpiTiles(input: ReportPdfInput): Tile[] {
+    const { summary } = input.report;
+    const prev: SalesTotals = summary.previous;
+    const label = input.period.previous.label;
+    const comparable = hasPrevious(prev);
+    const now = unitEconomics(summary);
+    const before = unitEconomics(prev);
+
+    return [
+        {
+            label: 'Net sales (PHP)',
+            value: pdfMoney(summary.totalSales),
+            ...changeNote(
+                summary.totalSales,
+                prev.totalSales,
+                label,
+                comparable,
             ),
-            PAGE.margin,
-            y,
-            LEGEND_WIDE,
-        ) + 6;
+        },
+        {
+            label: 'Units sold',
+            value: pdfQty(summary.totalQty),
+            ...changeNote(summary.totalQty, prev.totalQty, label, comparable),
+        },
+        {
+            label: 'Avg daily sales (PHP)',
+            value: pdfMoney(summary.averageDailySales),
+            ...changeNote(
+                summary.averageDailySales,
+                prev.averageDailySales,
+                label,
+                comparable,
+            ),
+        },
+        {
+            label: 'Avg price per unit (PHP)',
+            value: pdfMoney(now.pricePerUnit),
+            ...changeNote(
+                now.pricePerUnit,
+                before.pricePerUnit,
+                label,
+                comparable,
+            ),
+        },
+        {
+            label: 'Stores selling',
+            value: String(summary.storeCount),
+            ...countNote(
+                summary.storeCount,
+                prev.storeCount,
+                label,
+                comparable,
+            ),
+        },
+        {
+            label: 'Sales per store (PHP)',
+            value: pdfMoney(now.salesPerStore),
+            ...changeNote(
+                now.salesPerStore,
+                before.salesPerStore,
+                label,
+                comparable,
+            ),
+        },
+        {
+            label: 'Products sold',
+            value: String(summary.itemCount),
+            ...countNote(summary.itemCount, prev.itemCount, label, comparable),
+        },
+        dataStatus(input),
+    ];
+}
 
-    ensureSpace(52);
-    chartTitle('Sales share by company', PAGE.margin);
-    chartTitle(
-        report.trend.grouping === 'month'
-            ? 'Monthly sales (PHP)'
-            : 'Daily sales (PHP)',
-        PAGE.margin + HALF + 6,
+function summaryPage(page: PdfLayout, input: ReportPdfInput) {
+    const { report, period } = input;
+    const { doc } = page;
+
+    page.heading(
+        'Performance at a glance',
+        hasPrevious(report.summary.previous)
+            ? `Compared with ${period.previous.label}`
+            : `${period.previous.label} has no imported sales to compare with`,
+        50,
     );
-    y += 4;
+    page.tiles(kpiTiles(input));
+
+    page.heading('Key takeaways', undefined, 30);
+    page.takeaways(
+        buildInsights(report, {
+            previousLabel: period.previous.label,
+            money: peso,
+            qty: pdfQty,
+            coverage: input.coverage,
+            reconciliation: input.reconciliation,
+        })
+            // The tiles already show the total.
+            .filter((insight) => insight.title !== 'Total sales')
+            .map((insight) => ({ ...insight, tone: insight.tone as Tone })),
+    );
+
+    const split = weekdayWeekendSplit(
+        report.trend.grouping,
+        report.trend.points,
+    );
+    const right = PAGE.margin + HALF + 8;
+    page.heading('Where the sales come from', 'Share of net sales', 40);
+    const top = page.y + 1;
+    page.y = top;
+    page.chartTitle('By company', PAGE.margin);
     const companyBottom = donutWithLegend(
         doc,
         topSlices(
@@ -264,223 +317,38 @@ export function buildReportPdf(input: ReportPdfInput): jsPDF {
             (c) => c.sales,
         ),
         PAGE.margin,
-        y,
+        top + 4,
         HALF,
+        { radius: 14 },
     );
-    const trendBottom = trendChart(
-        doc,
-        report.trend.points.map((p) => ({
-            label: formatTrendLabel(p.date),
-            value: p.sales,
-        })),
-        PAGE.margin + HALF + 6,
-        y,
-        HALF,
-        38,
-    );
-    y = Math.max(companyBottom, trendBottom) + 6;
+    let splitBottom = companyBottom;
 
-    ensureSpace(50);
-    chartTitle('Sales share by item', PAGE.margin);
-    y += 4;
-    y =
-        donutWithLegend(
+    if (split) {
+        page.chartTitle('Weekdays vs weekends', right);
+        splitBottom = donutWithLegend(
             doc,
             topSlices(
-                report.items,
-                (i) => i.description,
-                (i) => i.sales,
-                5,
-            ),
-            PAGE.margin,
-            y,
-            LEGEND_WIDE,
-        ) + 6;
-
-    // Top 10
-    const topByQty = [...report.items]
-        .sort((a, b) => b.qty - a.qty)
-        .slice(0, 10);
-
-    if (topByQty.length) {
-        heading(
-            'Top 10 selling items',
-            'By quantity sold',
-            topByQty.length * 6.5 + 4,
-        );
-        y =
-            barChart(
-                doc,
-                topByQty.map((i) => ({ name: i.description, value: i.qty })),
-                PAGE.margin,
-                y,
-                CONTENT,
-                pdfQty,
-            ) + 6;
-    }
-
-    // Detail tables
-    const shownItems = report.items.slice(0, MAX_ITEM_ROWS);
-    heading(
-        'Items sold',
-        report.items.length > MAX_ITEM_ROWS
-            ? `Top ${MAX_ITEM_ROWS} of ${report.items.length} items by sales. The Excel export lists all.`
-            : `${report.items.length} items, ranked by sales`,
-    );
-    autoTable(doc, {
-        ...tableStyle,
-        startY: y,
-        head: [
-            [
-                '#',
-                'Item',
-                'Code',
-                'Qty sold',
-                'Sales (PHP)',
-                'Share',
-                'Avg price',
-                'Stores',
-            ],
-        ],
-        body: shownItems.map((item, index): RowInput => [
-            index + 1,
-            item.description,
-            item.code,
-            pdfQty(item.qty),
-            pdfMoney(item.sales),
-            `${item.share}%`,
-            pdfMoney(item.averagePrice),
-            item.storeCount,
-        ]),
-        columnStyles: {
-            0: { halign: 'right', cellWidth: 8 },
-            3: { halign: 'right' },
-            4: { halign: 'right' },
-            5: { halign: 'right' },
-            6: { halign: 'right' },
-            7: { halign: 'right' },
-        },
-    });
-    afterTable();
-
-    heading('Sales by store');
-    autoTable(doc, {
-        ...tableStyle,
-        startY: y,
-        head: [
-            [
-                'Store',
-                'Company',
-                'Qty sold',
-                'Sales (PHP)',
-                'Share',
-                'Items',
-                'Best seller',
-            ],
-        ],
-        body: report.byStore.map((s): RowInput => [
-            `${s.name} (${s.code})`,
-            s.company,
-            pdfQty(s.qty),
-            pdfMoney(s.sales),
-            `${s.share}%`,
-            s.itemCount,
-            s.topItem ?? '-',
-        ]),
-        columnStyles: {
-            2: { halign: 'right' },
-            3: { halign: 'right' },
-            4: { halign: 'right' },
-            5: { halign: 'right' },
-        },
-    });
-    afterTable();
-
-    heading('Sales by company');
-    autoTable(doc, {
-        ...tableStyle,
-        startY: y,
-        head: [['Company', 'Stores', 'Qty sold', 'Sales (PHP)', 'Share']],
-        body: report.byCompany.map((c): RowInput => [
-            c.company,
-            c.storeCount,
-            pdfQty(c.qty),
-            pdfMoney(c.sales),
-            `${c.share}%`,
-        ]),
-        columnStyles: {
-            1: { halign: 'right' },
-            2: { halign: 'right' },
-            3: { halign: 'right' },
-            4: { halign: 'right' },
-        },
-    });
-
-    const check = input.reconciliation;
-
-    if (check?.checked && check.issues.length > 0) {
-        afterTable();
-        heading(
-            "Month-end check against SM's DSR Summary",
-            `Store-days that need attention (first ${Math.min(check.issues.length, MAX_ISSUE_ROWS)})`,
-        );
-        autoTable(doc, {
-            ...tableStyle,
-            startY: y,
-            head: [
                 [
-                    'Date',
-                    'Store',
-                    'SM Summary',
-                    'Imported DSR',
-                    'Difference',
-                    'Status',
+                    { name: 'Weekdays', value: split.weekday.sales },
+                    { name: 'Weekends', value: split.weekend.sales },
                 ],
-            ],
-            body: check.issues
-                .slice(0, MAX_ISSUE_ROWS)
-                .map((issue): RowInput => [
-                    formatTrendLabel(issue.date),
-                    `${issue.siteName} (${issue.siteCode})`,
-                    issue.summary === null
-                        ? '-'
-                        : pdfMoney(Number(issue.summary)),
-                    issue.detail === null
-                        ? '-'
-                        : pdfMoney(Number(issue.detail)),
-                    pdfMoney(Number(issue.difference)),
-                    RECONCILE_LABELS[issue.status],
-                ]),
-            columnStyles: {
-                2: { halign: 'right' },
-                3: { halign: 'right' },
-                4: { halign: 'right' },
-            },
-        });
-    }
-
-    // Footer on every page
-    const pages = doc.getNumberOfPages();
-
-    for (let page = 1; page <= pages; page++) {
-        doc.setPage(page);
+                (s) => s.name,
+                (s) => s.value,
+            ),
+            right,
+            top + 4,
+            HALF,
+            { radius: 14 },
+        );
         doc.setFontSize(7).setTextColor(MUTED);
         doc.text(
-            'Sales Management System  |  Park Solutions Inc.  |  Source: SM Vendor Portal DSR',
-            PAGE.margin,
-            PAGE.height - 8,
+            `Per day: weekdays ${peso(split.weekday.average)} (${split.weekday.days} days), weekends ${peso(split.weekend.average)} (${split.weekend.days} days).`,
+            right,
+            splitBottom + 1,
         );
-        doc.text(
-            `Page ${page} of ${pages}`,
-            PAGE.width - PAGE.margin,
-            PAGE.height - 8,
-            { align: 'right' },
-        );
+        splitBottom += 3;
     }
 
-    if (input.autoPrint) {
-        doc.autoPrint();
-    }
-
-    return doc;
+    page.y = Math.max(companyBottom, splitBottom) + 2;
+    doc.setTextColor(INK);
 }

@@ -92,19 +92,26 @@ describe('buildReportPdf', () => {
         expect(doc.getNumberOfPages()).toBeGreaterThanOrEqual(2);
 
         for (const text of [
-            'Executive highlights',
-            'Key figures',
-            'Sales share by store',
-            'Top 10 selling items',
-            'Items sold',
-            'Sales by store',
+            'WEEKLY SALES REPORT',
+            'Performance at a glance',
+            'Key takeaways',
+            'Where the sales come from',
+            'Store performance',
+            'Store scorecard',
+            'Product performance',
+            'Top 10 products',
+            'Slow movers',
+            'Appendix',
+            'Data quality',
             'Page 1 of',
         ]) {
             expect(content, text).toContain(text);
         }
 
-        expect(content).toContain('up 16.3% vs Nov 2 - Nov 8, 2026');
+        expect(content).toContain('+16.3% vs Nov 2 - Nov 8, 2026');
         expect(content).toContain('4,650.00');
+        // Pie charts only: no bar or line chart titles.
+        expect(content).not.toContain('Daily sales (PHP)');
     });
 
     it('adds the month-end check with the store-days to fix', () => {

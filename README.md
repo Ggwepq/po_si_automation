@@ -146,12 +146,23 @@ file again is safe. Every import is listed with who imported it and when.
   (sales vs the previous period, best and lowest store, best-selling item,
   leading company, how concentrated sales are, and a warning when days are
   missing).
-- **View PDF** opens an A4 report in a new tab: logo, highlights, key figures
-  vs the previous period, charts, top 10 items, and full item, store and
-  company tables, with page numbers. Download or forward it from the viewer.
-  **Print** opens the same PDF with the print dialog, so every printout looks
-  the same. The PDF is built in the browser; amounts are shown as "PHP"
-  because PDF fonts lack the peso sign.
+- **View PDF** opens an A4 management report in a new tab (pie charts only):
+    1. **Executive summary** (page 1): eight KPI tiles with the change vs the
+       previous period (net sales, units, average daily sales, price per unit,
+       stores, sales per store, products, data status), key takeaways, and
+       sales by company and weekdays vs weekends.
+    2. **Store performance**: store share, reliance on the top stores, a store
+       scorecard and company totals.
+    3. **Product performance**: revenue and volume mix, top 10 products,
+       growth opportunities (best sellers missing from some stores, with an
+       estimated upside) and slow movers.
+    4. **Appendix**: every product, data quality checks and source notes.
+
+    Download or forward it from the viewer.
+    **Print** opens the same PDF with the print dialog, so every printout looks
+    the same. The PDF is built in the browser; amounts are shown as "PHP"
+    because PDF fonts lack the peso sign.
+
 - **Excel** downloads every section as a separate sheet for further analysis.
 - **Data completeness** (on screen only, not printed): a store × day grid of
   which DSRs are imported for the period, checked up to yesterday because SM

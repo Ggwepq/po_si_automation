@@ -13,12 +13,14 @@ import {
     topSlices,
 } from '../lib/format';
 import type {
+    DsrCoverage,
     ReportFilters,
     ReportPeriod,
     ReportSelection,
     SalesReport as Report,
 } from '../lib/types';
 import { ChartCard, SalesTrend, SharePie, TopItemsBar } from './charts';
+import { DataCompleteness } from './data-completeness';
 import { ItemsTable } from './items-table';
 import { ReportToolbar } from './report-toolbar';
 import { SlowMovers, StoresTable } from './store-tables';
@@ -29,6 +31,7 @@ type Props = {
     filters: ReportFilters;
     selected: ReportSelection;
     report: Report;
+    coverage: DsrCoverage;
     generatedAt: string;
 };
 
@@ -61,6 +64,7 @@ export function SalesReport({
     filters,
     selected,
     report,
+    coverage,
     generatedAt,
 }: Props) {
     const [measure, setMeasure] = useState<'qty' | 'sales'>('qty');
@@ -119,6 +123,8 @@ export function SalesReport({
                         summary={report.summary}
                         previousLabel={period.previous.label}
                     />
+
+                    <DataCompleteness coverage={coverage} />
 
                     {!hasSales && (
                         <p className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">

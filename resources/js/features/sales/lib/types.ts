@@ -105,6 +105,27 @@ export type ReportFilters = {
     dataTo: string | null;
 };
 
+/** Which store-days have an imported DSR (checked up to yesterday). */
+export type DsrCoverage = {
+    mode: 'day' | 'month';
+    /** Every checked day (day mode only). */
+    days: string[];
+    daysChecked?: number;
+    /** Days on which no store at all has a DSR: usually a missed import. */
+    daysWithoutAnyDsr: string[];
+    stores: {
+        code: string;
+        name: string;
+        company: string;
+        importedDays: number;
+        /** Days without a DSR (day mode only). */
+        missing: string[];
+        /** Per-month counts (month mode only). */
+        months: { month: string; imported: number; days: number }[];
+    }[];
+    complete: boolean;
+};
+
 /** Selected filter values; empty lists mean "all". */
 export type ReportSelection = {
     vendors: string[];

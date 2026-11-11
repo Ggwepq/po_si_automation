@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Sales;
 
 use App\Domains\Sales\Actions\BuildSalesReport;
+use App\Domains\Sales\Actions\CheckDsrCoverage;
 use App\Domains\Sales\Actions\GetSalesReportFilters;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Sales\SalesReportRequest;
@@ -11,8 +12,12 @@ use Inertia\Response;
 
 class SalesReportController extends Controller
 {
-    public function show(SalesReportRequest $request, BuildSalesReport $report, GetSalesReportFilters $filters): Response
-    {
+    public function show(
+        SalesReportRequest $request,
+        BuildSalesReport $report,
+        CheckDsrCoverage $coverage,
+        GetSalesReportFilters $filters,
+    ): Response {
         $period = $request->period($filters->latestDate());
         $filter = $request->filter();
         $previous = $period->previous();
@@ -35,6 +40,7 @@ class SalesReportController extends Controller
             ],
             'filters' => $filters->handle(),
             'report' => $report->handle($period, $filter),
+            'coverage' => $coverage->handle($period, $filter),
             'generatedAt' => now()->toIso8601String(),
         ]);
     }

@@ -144,6 +144,20 @@ file again is safe. Every import is listed with who imported it and when.
       are more than 20 items.
 - **Excel** downloads every section as a separate sheet. **Print** produces a
   clean page without the app menus (choose "Save as PDF" to send it).
+- **Data completeness** (on screen only, not printed): a store × day grid of
+  which DSRs are imported for the period, checked up to yesterday because SM
+  posts each day's DSR the next day. Days with no DSR from _any_ store are
+  listed in red with an Import DSR button; these are almost always missed
+  imports. A single store without a DSR may simply have had no sales. Periods
+  longer than three months show per-month counts instead of days.
+
+### Monthly routine
+
+1. Keep the month filled: import each day's DSR (portal: **Post Date** =
+   today), or import a whole month at once (portal: **Transaction Date** =
+   the month).
+2. Open **Sales report → Month**, check **Data completeness** shows no red
+   days, then use **Excel** or **Print** to share it.
 
 The DSR has no cost prices, categories, stock or time of sale, so profit,
 category, inventory and hourly reports are not possible from it.

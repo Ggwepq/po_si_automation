@@ -1,6 +1,7 @@
 import { Head } from '@inertiajs/react';
 import { SalesReport } from '@/features/sales/components/sales-report';
 import type {
+    DsrCoverage,
     ReportFilters,
     ReportPeriod,
     ReportSelection,
@@ -13,6 +14,7 @@ type Props = {
     filters: ReportFilters;
     selected: ReportSelection;
     report: Report;
+    coverage: DsrCoverage;
     generatedAt: string;
 };
 

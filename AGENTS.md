@@ -191,6 +191,14 @@ sales report. How the pieces fit:
   (`companies[]=SVI`); empty means "all". Build URLs with `reportUrl()` in
   `features/sales/lib/report-query.ts`, and keep page roots on
   `grid-cols-1` so wide tables scroll inside their box on phones.
+- **Dates in queries:** aggregate and range-filter on `dsr_lines`, whose
+  `transaction_date` is inserted as a plain `Y-m-d`. Eloquent writes
+  `dsr_reports.transaction_date` with a time part on SQLite (the test
+  database), so a `whereBetween` on it silently misses the last day; use
+  `whereDate` there if you must query it.
+- **Completeness:** `CheckDsrCoverage` checks store-days up to yesterday (SM
+  posts DSRs the next day) and treats stores seen in the previous period as
+  expected, so a store missing for a whole month still shows up.
 - **Money is exact:** amounts are validated as plain decimal strings and
   summed with `bcadd`; never use floats when storing sales.
 - **Reports:** `BuildSalesReport` aggregates `dsr_lines` in SQL (indexed by

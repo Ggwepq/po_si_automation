@@ -40,7 +40,10 @@ composer ci:check
 
 Runs formatting, linting, type checks (TypeScript and PHPStan), frontend tests
 (Vitest) and backend tests (Pest). CI runs the same command on every push to
-`master` and on pull requests.
+`dev` and `master` and on pull requests.
+
+Branches: `dev` is where development happens; `master` holds released code
+and is updated by merging `dev`. See [AGENTS.md](AGENTS.md#git).
 
 ## Accounts
 

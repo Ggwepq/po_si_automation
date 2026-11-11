@@ -131,7 +131,12 @@ decision from the project owner; the UI promises "processed locally".
 
 ## Git
 
-- Branch from `master`; one topic per branch. Conventional commit messages
-  (`feat:`, `fix:`, `refactor:`, `chore:`, `docs:`, `test:`).
+- **`master`** is production: only tested, released code. Never commit to it
+  directly; it is updated by merging `dev` once a release is ready.
+- **`dev`** is the development branch. Branch feature work from `dev` (e.g.
+  `feat/dsr-import`), one topic per branch, and merge back into `dev` through a
+  pull request after `composer ci:check` passes.
+- Conventional commit messages (`feat:`, `fix:`, `refactor:`, `chore:`,
+  `docs:`, `test:`).
 - Never commit `.env`, `vendor/`, `node_modules/`, `public/build/`, or the
   generated Wayfinder folders.

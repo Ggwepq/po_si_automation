@@ -75,7 +75,7 @@ export function SharePie({
     }
 
     return (
-        <div className="grid items-center gap-4 sm:grid-cols-[150px_minmax(0,1fr)]">
+        <div className="grid items-center gap-4 sm:grid-cols-[150px_minmax(0,1fr)] print:grid-cols-[150px_minmax(0,1fr)]">
             <div className="h-40">
                 <ResponsiveContainer>
                     <PieChart>

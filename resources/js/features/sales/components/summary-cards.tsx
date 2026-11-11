@@ -84,7 +84,7 @@ export function SummaryCards({
     return (
         <section
             aria-label="Summary"
-            className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5 print:grid-cols-5"
+            className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5 print:grid-cols-3"
         >
             {cards.map((card) => (
                 <div

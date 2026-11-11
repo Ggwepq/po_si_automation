@@ -5,7 +5,10 @@ import { BrandLogo } from '@/components/brand-logo';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { importMethod as importRoute } from '@/routes/sales';
+import { toast } from 'sonner';
 import { downloadReport } from '../lib/export-report';
+import { buildInsights } from '../lib/insights';
+import { openReportPdf } from '../lib/open-report-pdf';
 import {
     describeScope,
     formatMoney,
@@ -21,6 +24,7 @@ import type {
 } from '../lib/types';
 import { ChartCard, SalesTrend, SharePie, TopItemsBar } from './charts';
 import { DataCompleteness } from './data-completeness';
+import { ExecutiveHighlights } from './executive-highlights';
 import { ItemsTable } from './items-table';
 import { ReportToolbar } from './report-toolbar';
 import { SlowMovers, StoresTable } from './store-tables';
@@ -68,8 +72,37 @@ export function SalesReport({
     generatedAt,
 }: Props) {
     const [measure, setMeasure] = useState<'qty' | 'sales'>('qty');
+    const [pdfBusy, setPdfBusy] = useState(false);
     const scope = describeScope(filters, selected);
     const hasSales = report.summary.totalSales !== 0 || report.items.length > 0;
+    const insights = buildInsights(report, {
+        previousLabel: period.previous.label,
+        money: formatMoney,
+        qty: formatQty,
+        coverage,
+    });
+
+    const openPdf = async (print: boolean) => {
+        setPdfBusy(true);
+
+        try {
+            await openReportPdf(
+                {
+                    report,
+                    period,
+                    coverage,
+                    scope,
+                    generatedAt,
+                    autoPrint: print,
+                },
+                `Sales_Report_${period.start}_to_${period.end}.pdf`,
+            );
+        } catch {
+            toast.error('The PDF could not be created. Please try again.');
+        } finally {
+            setPdfBusy(false);
+        }
+    };
 
     const topItems = [...report.items]
         .sort((a, b) => b[measure] - a[measure])
@@ -102,6 +135,8 @@ export function SalesReport({
                 filters={filters}
                 selected={selected}
                 onExport={() => downloadReport(report, period, scope)}
+                onPdf={(print) => void openPdf(print)}
+                pdfBusy={pdfBusy}
             />
 
             {!filters.dataTo ? (
@@ -124,6 +159,8 @@ export function SalesReport({
                         previousLabel={period.previous.label}
                     />
 
+                    <ExecutiveHighlights insights={insights} />
+
                     <DataCompleteness coverage={coverage} />
 
                     {!hasSales && (
@@ -133,7 +170,7 @@ export function SalesReport({
                         </p>
                     )}
 
-                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 print:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 print:grid-cols-1">
                         <ChartCard title="Sales share by store">
                             <SharePie
                                 slices={topSlices(

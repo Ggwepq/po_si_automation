@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { Download, Printer, RotateCcw } from 'lucide-react';
+import { Download, FileText, Printer, RotateCcw } from 'lucide-react';
 import { MultiSelectFilter } from '@/components/multi-select-filter';
 import { Button } from '@/components/ui/button';
 import { report as reportRoute } from '@/routes/sales';
@@ -18,6 +18,9 @@ type Props = {
     filters: ReportFilters;
     selected: ReportSelection;
     onExport: () => void;
+    /** Opens the PDF report; with `print`, also opens the print dialog. */
+    onPdf: (print: boolean) => void;
+    pdfBusy: boolean;
 };
 
 /**
@@ -25,7 +28,14 @@ type Props = {
  * only when there is more than one), company and store. Every change updates
  * the URL, so a view can be bookmarked or shared.
  */
-export function ReportToolbar({ period, filters, selected, onExport }: Props) {
+export function ReportToolbar({
+    period,
+    filters,
+    selected,
+    onExport,
+    onPdf,
+    pdfBusy,
+}: Props) {
     const current: ReportQuery = {
         period: period.type,
         date: period.start,
@@ -119,7 +129,7 @@ export function ReportToolbar({ period, filters, selected, onExport }: Props) {
                 </Button>
             )}
 
-            <div className="ml-auto flex gap-2">
+            <div className="ml-auto flex flex-wrap gap-2">
                 <Button
                     variant="outline"
                     size="sm"
@@ -129,10 +139,20 @@ export function ReportToolbar({ period, filters, selected, onExport }: Props) {
                     <Download /> Excel
                 </Button>
                 <Button
+                    size="sm"
+                    className="h-9"
+                    disabled={pdfBusy}
+                    onClick={() => onPdf(false)}
+                >
+                    <FileText /> {pdfBusy ? 'Preparing…' : 'View PDF'}
+                </Button>
+                {/* Prints the PDF report, so every printout has the same layout. */}
+                <Button
                     variant="outline"
                     size="sm"
                     className="h-9"
-                    onClick={() => window.print()}
+                    disabled={pdfBusy}
+                    onClick={() => onPdf(true)}
                 >
                     <Printer /> Print
                 </Button>

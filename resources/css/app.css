@@ -175,11 +175,33 @@
     background: var(--primary-foreground);
 }
 
-/* Printed reports: content only, on white paper, without app navigation. */
+/*
+ * Printed pages (Ctrl+P): content only, light colours on white paper, without
+ * app navigation. The Print button prints the PDF report instead, which has
+ * the best layout; this keeps a browser printout clean too.
+ */
 @media print {
+    /* Zero page margin hides the browser's own header and footer (page
+       title, URL, date); the padding below gives the content its margins. */
     @page {
         size: A4;
-        margin: 12mm;
+        margin: 0;
+    }
+
+    :root,
+    .dark {
+        --background: oklch(1 0 0);
+        --foreground: oklch(0.25 0.04 265);
+        --card: oklch(1 0 0);
+        --card-foreground: oklch(0.25 0.04 265);
+        --muted: oklch(0.965 0.01 255);
+        --muted-foreground: oklch(0.5 0.03 260);
+        --border: oklch(0.9 0.015 255);
+        --primary: oklch(0.55 0.12 265);
+        --primary-foreground: oklch(1 0 0);
+        --accent: oklch(0.96 0.03 255);
+        --popover: oklch(1 0 0);
+        --chart-1: oklch(0.55 0.12 265);
     }
 
     [data-slot='sidebar'],
@@ -191,8 +213,11 @@
 
     [data-slot='sidebar-inset'] {
         margin: 0 !important;
+        padding: 12mm !important;
         border: 0 !important;
+        border-radius: 0 !important;
         box-shadow: none !important;
+        background: white !important;
     }
 
     html,

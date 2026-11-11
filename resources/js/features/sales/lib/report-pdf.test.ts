@@ -1,0 +1,121 @@
+import { describe, expect, it } from 'vitest';
+import { buildReportPdf } from './report-pdf';
+import type { ReportPeriod, SalesReport, SalesTotals } from './types';
+
+const totals = (sales: number): SalesTotals => ({
+    totalSales: sales,
+    totalQty: 40,
+    itemCount: 30,
+    storeCount: 2,
+    salesDays: 1,
+    averageDailySales: sales,
+});
+
+const items = Array.from({ length: 30 }, (_, i) => ({
+    code: `A${i}`,
+    description: `DEMO ITEM ${i}`,
+    uom: 'PC',
+    qty: 30 - i,
+    sales: (30 - i) * 10,
+    share: 3.33,
+    averagePrice: 10,
+    storeCount: 2,
+}));
+
+const report: SalesReport = {
+    summary: { ...totals(4650), previous: totals(4000) },
+    byCompany: [
+        { company: 'SVI', sales: 4650, qty: 465, storeCount: 2, share: 100 },
+    ],
+    byStore: [
+        {
+            code: '0001',
+            name: 'SVI DEMO NORTH',
+            company: 'SVI',
+            sales: 3000,
+            qty: 300,
+            itemCount: 30,
+            share: 64.5,
+            topItem: 'DEMO ITEM 0',
+        },
+        {
+            code: '0002',
+            name: 'SVI DEMO SOUTH',
+            company: 'SVI',
+            sales: 1650,
+            qty: 165,
+            itemCount: 20,
+            share: 35.5,
+            topItem: 'DEMO ITEM 1',
+        },
+    ],
+    items,
+    trend: {
+        grouping: 'day',
+        points: [
+            { date: '2026-11-09', sales: 2000, qty: 200 },
+            { date: '2026-11-10', sales: 2650, qty: 265 },
+        ],
+    },
+};
+
+const period = {
+    type: 'weekly',
+    start: '2026-11-09',
+    end: '2026-11-15',
+    label: 'Nov 9 - Nov 15, 2026',
+    days: 7,
+    previous: {
+        start: '2026-11-02',
+        end: '2026-11-08',
+        label: 'Nov 2 - Nov 8, 2026',
+    },
+    next: {
+        start: '2026-11-16',
+        end: '2026-11-22',
+        label: 'Nov 16 - Nov 22, 2026',
+    },
+} as ReportPeriod;
+
+describe('buildReportPdf', () => {
+    it('builds an A4 report with highlights, figures, charts and tables', () => {
+        const doc = buildReportPdf({
+            report,
+            period,
+            scope: 'All stores',
+            generatedAt: '2026-11-11T10:00:00+08:00',
+        });
+        const content = doc.output();
+
+        expect(content.startsWith('%PDF-')).toBe(true);
+        expect(doc.getNumberOfPages()).toBeGreaterThanOrEqual(2);
+
+        for (const text of [
+            'Executive highlights',
+            'Key figures',
+            'Sales share by store',
+            'Top 10 selling items',
+            'Items sold',
+            'Sales by store',
+            'Page 1 of',
+        ]) {
+            expect(content, text).toContain(text);
+        }
+
+        expect(content).toContain('up 16.3% vs Nov 2 - Nov 8, 2026');
+        expect(content).toContain('4,650.00');
+    });
+
+    it('opens the print dialog when asked', () => {
+        const doc = buildReportPdf({
+            report,
+            period,
+            scope: 'All stores',
+            generatedAt: '2026-11-11T10:00:00+08:00',
+            autoPrint: true,
+        });
+
+        // jsPDF adds an "open action" that runs the viewer's Print command.
+        expect(doc.output()).toMatch(/\/N \/Print/);
+    });
+});

@@ -5,10 +5,12 @@ use App\Domains\Sales\Data\DsrReportData;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
 
-/** Imports DSRs directly through the action: [site, company, date, [[article, qty, sales], ...]]. */
+/** Imports DSRs directly through the action: [site, company, date, [[article, qty, sales], ...], vendor?]. */
 function seedSales(array $reports): void
 {
     app(ImportDsrReports::class)->handle(array_map(fn (array $r) => DsrReportData::fromArray([
+        'vendor_code' => $r[4] ?? 'V1',
+        'vendor_name' => 'VENDOR '.($r[4] ?? 'V1'),
         'site_code' => $r[0],
         'site_name' => "{$r[1]} STORE {$r[0]}",
         'company' => $r[1],
@@ -92,12 +94,38 @@ it('breaks sales down by store and company', function () {
             ->where('report.byCompany.1.company', 'SSM'));
 });
 
-it('filters by company and by store', function () {
-    $this->get(route('sales.report', ['period' => 'monthly', 'date' => '2026-11-01', 'company' => 'SSM']))
-        ->assertInertia(fn (Assert $page) => $page->where('report.summary.totalSales', 150));
+it('filters by one or several companies and stores', function () {
+    $month = ['period' => 'monthly', 'date' => '2026-11-01'];
 
-    $this->get(route('sales.report', ['period' => 'monthly', 'date' => '2026-11-01', 'site' => '0001']))
+    $this->get(route('sales.report', [...$month, 'companies' => ['SSM']]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('report.summary.totalSales', 150)
+            ->where('selected.companies', ['SSM']));
+
+    $this->get(route('sales.report', [...$month, 'companies' => ['SSM', 'SVI']]))
+        ->assertInertia(fn (Assert $page) => $page->where('report.summary.totalSales', 630));
+
+    $this->get(route('sales.report', [...$month, 'sites' => ['0001']]))
         ->assertInertia(fn (Assert $page) => $page->where('report.summary.totalSales', 480));
+});
+
+it('filters by vendor and lists every vendor', function () {
+    seedSales([['0002', 'SSM', '2026-11-04', [['TEA', '1', '25.00']], 'V2']]);
+    $month = ['period' => 'monthly', 'date' => '2026-11-01'];
+
+    $this->get(route('sales.report', [...$month, 'vendors' => ['V2']]))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('report.summary.totalSales', 25)
+            ->where('filters.vendors', [['code' => 'V1', 'name' => 'VENDOR V1'], ['code' => 'V2', 'name' => 'VENDOR V2']]));
+
+    $this->get(route('sales.report', $month))
+        ->assertInertia(fn (Assert $page) => $page->where('report.summary.totalSales', 655));
+});
+
+it('lists the days that have sales for the date picker', function () {
+    $this->get(route('sales.report'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('filters.salesDates', ['2026-10-15', '2026-11-03', '2026-11-05']));
 });
 
 it('fills days without sales in the daily trend', function () {

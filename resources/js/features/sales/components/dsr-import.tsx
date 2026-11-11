@@ -146,7 +146,7 @@ export function DsrImport({ imports, limits }: Props) {
     const preview = file && previewTotals(file.parsed.reports);
 
     return (
-        <div className="grid gap-6 p-4 md:p-6">
+        <div className="grid grid-cols-1 gap-6 p-4 md:p-6">
             <header className="space-y-1">
                 <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                     Sales

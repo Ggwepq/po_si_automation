@@ -121,10 +121,17 @@ file again is safe. Every import is listed with who imported it and when.
 
 **Sales → Sales report** opens on the month of the latest imported sales.
 
-- **Periods:** Daily, Weekly (Mon–Sun), Monthly, Quarterly, Yearly, or a Custom
-  range of up to three years. Use the arrows to step to the previous or next
-  period.
-- **Filters:** company (SVI, SSM, SMCo…) and store.
+- **Dates:** click the date button for quick choices (Latest sales day, Today,
+  Yesterday, Last 7/30 days, This/Last week, This/Last month, This quarter,
+  This/Last year), or pick on the calendar by Day, Week, Month, Quarter, Year
+  or a Range (up to three years). Days with imported sales show a dot. The
+  arrows step to the previous or next period.
+- **Filters:** Company and Store, each allowing several choices with search;
+  the store list follows the chosen companies. Vendor appears automatically
+  once DSRs from more than one vendor are imported. **Reset filters** clears
+  them.
+- The page address keeps every choice, so a view can be bookmarked or sent as
+  a link.
 - **Contents:**
     - Totals with % change against the previous period: sales (excl. VAT),
       quantity sold, items sold, stores reporting, average daily sales.

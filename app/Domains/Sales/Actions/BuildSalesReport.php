@@ -2,10 +2,12 @@
 
 namespace App\Domains\Sales\Actions;
 
+use App\Domains\Sales\Data\ReportFilter;
 use App\Domains\Sales\Data\ReportPeriod;
 use App\Domains\Sales\Models\Article;
 use App\Domains\Sales\Models\DsrLine;
 use App\Domains\Sales\Models\Site;
+use App\Domains\Sales\Models\Vendor;
 use App\Domains\Sales\Support\SalesReportCache;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
@@ -28,21 +30,20 @@ class BuildSalesReport
     public function __construct(private SalesReportCache $cache) {}
 
     /** @return array<string, mixed> */
-    public function handle(ReportPeriod $period, ?string $company = null, ?string $siteCode = null): array
+    public function handle(ReportPeriod $period, ReportFilter $filter = new ReportFilter): array
     {
         return $this->cache->remember([
             'type' => $period->type->value,
             'start' => $period->start->toDateString(),
             'end' => $period->end->toDateString(),
-            'company' => $company,
-            'site' => $siteCode,
-        ], fn () => $this->build($period, $company, $siteCode));
+            ...$filter->cacheKey(),
+        ], fn () => $this->build($period, $filter));
     }
 
     /** @return array<string, mixed> */
-    private function build(ReportPeriod $period, ?string $company, ?string $siteCode): array
+    private function build(ReportPeriod $period, ReportFilter $filter): array
     {
-        $lines = fn (ReportPeriod $p) => $this->lines($p, $company, $siteCode);
+        $lines = fn (ReportPeriod $p) => $this->lines($p, $filter);
         $stores = $this->byStore($lines($period));
 
         return [
@@ -58,12 +59,13 @@ class BuildSalesReport
     }
 
     /** @return Builder<DsrLine> */
-    private function lines(ReportPeriod $period, ?string $company, ?string $siteCode): Builder
+    private function lines(ReportPeriod $period, ReportFilter $filter): Builder
     {
         return DsrLine::query()
             ->whereBetween('transaction_date', [$period->start->toDateString(), $period->end->toDateString()])
-            ->when($company, fn (Builder $q) => $q->whereIn('site_id', Site::select('id')->where('company', $company)))
-            ->when($siteCode, fn (Builder $q) => $q->whereIn('site_id', Site::select('id')->where('code', $siteCode)));
+            ->when($filter->vendorCodes, fn (Builder $q, array $codes) => $q->whereIn('vendor_id', Vendor::select('id')->whereIn('code', $codes)))
+            ->when($filter->companies, fn (Builder $q, array $companies) => $q->whereIn('site_id', Site::select('id')->whereIn('company', $companies)))
+            ->when($filter->siteCodes, fn (Builder $q, array $codes) => $q->whereIn('site_id', Site::select('id')->whereIn('code', $codes)));
     }
 
     /**

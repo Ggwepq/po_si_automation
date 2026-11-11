@@ -13,6 +13,7 @@ use Illuminate\Support\Carbon;
  *
  * @property int $id
  * @property int $dsr_report_id
+ * @property int $vendor_id
  * @property int $site_id
  * @property int $article_id
  * @property Carbon $transaction_date
@@ -21,7 +22,7 @@ use Illuminate\Support\Carbon;
  * @property string $vatable_sales
  * @property string $total_sales
  */
-#[Fillable(['dsr_report_id', 'site_id', 'article_id', 'transaction_date', 'sales_qty', 'vat_exempt_sales', 'vatable_sales', 'total_sales'])]
+#[Fillable(['dsr_report_id', 'vendor_id', 'site_id', 'article_id', 'transaction_date', 'sales_qty', 'vat_exempt_sales', 'vatable_sales', 'total_sales'])]
 class DsrLine extends Model
 {
     public $timestamps = false;

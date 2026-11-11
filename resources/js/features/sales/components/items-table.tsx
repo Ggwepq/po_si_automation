@@ -50,7 +50,7 @@ export function ItemsTable({ items }: { items: ItemSales[] }) {
     const pagination = paginate(ranked, page, pageSize);
 
     return (
-        <div className="grid gap-3">
+        <div className="grid grid-cols-1 gap-3">
             <label className="relative w-full sm:w-72 print:hidden">
                 <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input

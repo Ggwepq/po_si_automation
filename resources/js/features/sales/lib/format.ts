@@ -1,3 +1,5 @@
+import type { ReportFilters, ReportSelection } from './types';
+
 const peso = new Intl.NumberFormat('en-PH', {
     style: 'currency',
     currency: 'PHP',
@@ -37,6 +39,39 @@ export function formatTrendLabel(date: string): string {
               month: 'short',
               year: 'numeric',
           });
+}
+
+/** Plain-language description of the filters, e.g. "SVI and SSM stores". */
+export function describeScope(
+    filters: Pick<ReportFilters, 'vendors' | 'sites'>,
+    selected: ReportSelection,
+): string {
+    let scope = 'All stores';
+
+    if (selected.sites.length === 1) {
+        scope =
+            filters.sites.find((s) => s.code === selected.sites[0])?.name ??
+            selected.sites[0];
+    } else if (selected.sites.length > 1) {
+        scope = `${selected.sites.length} stores`;
+    } else if (selected.companies.length > 0) {
+        scope =
+            selected.companies.length > 2
+                ? `${selected.companies.length} companies`
+                : `${selected.companies.join(' and ')} stores`;
+    }
+
+    if (selected.vendors.length === 1) {
+        const vendor = filters.vendors.find(
+            (v) => v.code === selected.vendors[0],
+        );
+
+        return `${scope} · ${vendor?.name ?? selected.vendors[0]}`;
+    }
+
+    return selected.vendors.length > 1
+        ? `${scope} · ${selected.vendors.length} vendors`
+        : scope;
 }
 
 export type Slice = { name: string; value: number; share: number };

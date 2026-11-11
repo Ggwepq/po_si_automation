@@ -6,7 +6,12 @@ import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { importMethod as importRoute } from '@/routes/sales';
 import { downloadReport } from '../lib/export-report';
-import { formatMoney, formatQty, topSlices } from '../lib/format';
+import {
+    describeScope,
+    formatMoney,
+    formatQty,
+    topSlices,
+} from '../lib/format';
 import type {
     ReportFilters,
     ReportPeriod,
@@ -37,7 +42,7 @@ function Section({
     children: React.ReactNode;
 }) {
     return (
-        <section className="grid break-inside-avoid gap-3">
+        <section className="grid break-inside-avoid grid-cols-1 gap-3">
             <div>
                 <h2 className="text-base font-semibold">{title}</h2>
                 {description && (
@@ -59,10 +64,7 @@ export function SalesReport({
     generatedAt,
 }: Props) {
     const [measure, setMeasure] = useState<'qty' | 'sales'>('qty');
-    const storeName = filters.sites.find((s) => s.code === selected.site)?.name;
-    const scope =
-        storeName ??
-        (selected.company ? `${selected.company} stores` : 'All stores');
+    const scope = describeScope(filters, selected);
     const hasSales = report.summary.totalSales !== 0 || report.items.length > 0;
 
     const topItems = [...report.items]
@@ -71,7 +73,7 @@ export function SalesReport({
         .map((item) => ({ name: item.description, value: item[measure] }));
 
     return (
-        <div className="grid gap-6 p-4 md:p-6 print:p-0">
+        <div className="grid grid-cols-1 gap-6 p-4 md:p-6 print:p-0">
             <header className="flex flex-wrap items-start justify-between gap-4">
                 <div className="space-y-1">
                     <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
@@ -125,7 +127,7 @@ export function SalesReport({
                         </p>
                     )}
 
-                    <div className="grid gap-4 lg:grid-cols-2 print:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 print:grid-cols-2">
                         <ChartCard title="Sales share by store">
                             <SharePie
                                 slices={topSlices(

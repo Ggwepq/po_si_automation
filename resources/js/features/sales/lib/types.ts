@@ -13,6 +13,8 @@ export type DsrLineInput = {
 };
 
 export type DsrReportInput = {
+    vendor_code: string;
+    vendor_name: string;
     site_code: string;
     site_name: string;
     company: string;
@@ -94,10 +96,18 @@ export type SalesReport = {
 };
 
 export type ReportFilters = {
+    vendors: { code: string; name: string }[];
     companies: string[];
     sites: { code: string; name: string; company: string }[];
+    /** YYYY-MM-DD days that have imported sales, oldest first. */
+    salesDates: string[];
     dataFrom: string | null;
     dataTo: string | null;
 };
 
-export type ReportSelection = { company: string | null; site: string | null };
+/** Selected filter values; empty lists mean "all". */
+export type ReportSelection = {
+    vendors: string[];
+    companies: string[];
+    sites: string[];
+};

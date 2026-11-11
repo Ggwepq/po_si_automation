@@ -24,6 +24,8 @@ class ImportDsrRequest extends FormRequest
         return [
             'file_name' => ['required', 'string', 'max:255'],
             'reports' => ['required', 'array', 'min:1', 'max:'.self::MAX_REPORTS],
+            'reports.*.vendor_code' => ['required', 'string', 'max:20'],
+            'reports.*.vendor_name' => ['required', 'string', 'max:255'],
             'reports.*.site_code' => ['required', 'string', 'max:20'],
             'reports.*.site_name' => ['required', 'string', 'max:255'],
             'reports.*.company' => ['required', 'string', 'max:100'],

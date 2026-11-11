@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Sales;
 
+use App\Domains\Sales\Data\ReportFilter;
 use App\Domains\Sales\Data\ReportPeriod;
 use App\Domains\Sales\Enums\PeriodType;
 use Carbon\CarbonImmutable;
@@ -33,8 +34,12 @@ class SalesReportRequest extends FormRequest
                     }
                 },
             ],
-            'company' => ['nullable', 'string', 'max:100'],
-            'site' => ['nullable', 'string', 'max:20'],
+            'vendors' => ['nullable', 'array', 'max:50'],
+            'vendors.*' => ['string', 'max:20'],
+            'companies' => ['nullable', 'array', 'max:50'],
+            'companies.*' => ['string', 'max:100'],
+            'sites' => ['nullable', 'array', 'max:500'],
+            'sites.*' => ['string', 'max:20'],
         ];
     }
 
@@ -52,17 +57,22 @@ class SalesReportRequest extends FormRequest
         );
     }
 
-    public function company(): ?string
+    public function filter(): ReportFilter
     {
-        $company = $this->validated('company');
-
-        return is_string($company) && $company !== '' ? $company : null;
+        return new ReportFilter(
+            vendorCodes: $this->list('vendors'),
+            companies: $this->list('companies'),
+            siteCodes: $this->list('sites'),
+        );
     }
 
-    public function siteCode(): ?string
+    /** @return list<string> unique, non-empty values */
+    private function list(string $key): array
     {
-        $site = $this->validated('site');
+        $values = $this->validated($key);
 
-        return is_string($site) && $site !== '' ? $site : null;
+        return is_array($values)
+            ? array_values(array_unique(array_filter($values, fn (mixed $v) => is_string($v) && $v !== '')))
+            : [];
     }
 }

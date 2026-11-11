@@ -5,6 +5,7 @@ use App\Domains\Sales\Models\DsrImport;
 use App\Domains\Sales\Models\DsrLine;
 use App\Domains\Sales\Models\DsrReport;
 use App\Domains\Sales\Models\Site;
+use App\Domains\Sales\Models\Vendor;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -24,9 +25,11 @@ function dsrLine(string $code, string $qty, string $sales): array
 }
 
 /** @return array<string, mixed> */
-function dsrReport(string $site, string $date, array $lines, string $company = 'SVI'): array
+function dsrReport(string $site, string $date, array $lines, string $company = 'SVI', string $vendor = '900001'): array
 {
     return [
+        'vendor_code' => $vendor,
+        'vendor_name' => "VENDOR {$vendor}",
         'site_code' => $site,
         'site_name' => "{$company} STORE {$site}",
         'company' => $company,
@@ -97,6 +100,21 @@ it('updates store and item names from the latest import', function () {
 
     expect(Site::sole()->name)->toBe('SVI RENAMED')
         ->and(Article::sole()->description)->toBe('New name');
+});
+
+it('keeps different vendors at the same store and day apart', function () {
+    importDsr([
+        dsrReport('0001', '2026-11-10', [dsrLine('A1', '1', '10.00')], vendor: 'V1'),
+        dsrReport('0001', '2026-11-10', [dsrLine('B1', '2', '20.00')], vendor: 'V2'),
+    ])->assertSessionHasNoErrors();
+
+    // Re-importing one vendor's day must not touch the other vendor's.
+    importDsr([dsrReport('0001', '2026-11-10', [dsrLine('A1', '3', '30.00')], vendor: 'V1')]);
+
+    expect(Vendor::count())->toBe(2)
+        ->and(DsrReport::count())->toBe(2)
+        ->and(DsrReport::whereRelation('vendor', 'code', 'V2')->sole()->total_sales)->toBe('20.00')
+        ->and(DsrReport::whereRelation('vendor', 'code', 'V1')->sole()->total_sales)->toBe('30.00');
 });
 
 it('rejects the same store-day twice in one import and saves nothing', function () {

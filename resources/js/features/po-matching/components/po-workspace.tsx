@@ -72,7 +72,7 @@ export function PoWorkspace() {
     };
 
     return (
-        <div className="grid gap-6 p-4 md:p-6">
+        <div className="grid grid-cols-1 gap-6 p-4 md:p-6">
             <header className="flex flex-wrap items-start justify-between gap-4">
                 <div className="space-y-1">
                     <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">

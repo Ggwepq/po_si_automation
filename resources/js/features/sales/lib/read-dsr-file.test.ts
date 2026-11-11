@@ -7,6 +7,8 @@ const report = (
     date: string,
     sales: string[],
 ): DsrReportInput => ({
+    vendor_code: '900001',
+    vendor_name: 'DEMO VENDOR',
     site_code: site,
     site_name: site,
     company: 'SVI',

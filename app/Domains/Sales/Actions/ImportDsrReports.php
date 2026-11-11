@@ -9,6 +9,7 @@ use App\Domains\Sales\Models\DsrImport;
 use App\Domains\Sales\Models\DsrLine;
 use App\Domains\Sales\Models\DsrReport;
 use App\Domains\Sales\Models\Site;
+use App\Domains\Sales\Models\Vendor;
 use App\Domains\Sales\Support\SalesReportCache;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -33,6 +34,7 @@ class ImportDsrReports
         $this->rejectDuplicates($reports);
 
         $import = DB::transaction(function () use ($reports, $fileName, $user): DsrImport {
+            $vendorIds = $this->saveVendors($reports);
             $siteIds = $this->saveSites($reports);
             $articleIds = $this->saveArticles($reports);
 
@@ -49,7 +51,13 @@ class ImportDsrReports
             $replaced = 0;
 
             foreach ($reports as $report) {
-                $replaced += $this->saveReport($report, $siteIds[$report->siteCode], $articleIds, $import) ? 1 : 0;
+                $replaced += $this->saveReport(
+                    $report,
+                    $vendorIds[$report->vendorCode],
+                    $siteIds[$report->siteCode],
+                    $articleIds,
+                    $import,
+                ) ? 1 : 0;
             }
 
             $import->update(['replaced_count' => $replaced]);
@@ -75,6 +83,24 @@ class ImportDsrReports
                 'reports' => 'The file contains the same store and date more than once: '.$duplicates->implode(', ').'.',
             ]);
         }
+    }
+
+    /**
+     * @param  list<DsrReportData>  $reports
+     * @return array<string, int> vendor id by vendor code
+     */
+    private function saveVendors(array $reports): array
+    {
+        $rows = collect($reports)
+            ->keyBy(fn (DsrReportData $r) => $r->vendorCode)
+            ->map(fn (DsrReportData $r) => ['code' => $r->vendorCode, 'name' => $r->vendorName])
+            ->values()
+            ->all();
+
+        Vendor::upsert($rows, ['code'], ['name']);
+
+        /** @var array<string, int> */
+        return Vendor::whereIn('code', array_column($rows, 'code'))->pluck('id', 'code')->all();
     }
 
     /**
@@ -127,10 +153,11 @@ class ImportDsrReports
      * @param  array<string, int>  $articleIds
      * @return bool whether an earlier import of this store-day was replaced
      */
-    private function saveReport(DsrReportData $report, int $siteId, array $articleIds, DsrImport $import): bool
+    private function saveReport(DsrReportData $report, int $vendorId, int $siteId, array $articleIds, DsrImport $import): bool
     {
         $lines = collect($report->lines);
-        $existing = DsrReport::where('site_id', $siteId)
+        $existing = DsrReport::where('vendor_id', $vendorId)
+            ->where('site_id', $siteId)
             ->whereDate('transaction_date', $report->transactionDate)
             ->first();
 
@@ -146,13 +173,19 @@ class ImportDsrReports
 
         $saved = $existing
             ? tap($existing)->update($attributes)
-            : DsrReport::create([...$attributes, 'site_id' => $siteId, 'transaction_date' => $report->transactionDate]);
+            : DsrReport::create([
+                ...$attributes,
+                'vendor_id' => $vendorId,
+                'site_id' => $siteId,
+                'transaction_date' => $report->transactionDate,
+            ]);
 
         $date = $report->transactionDate->toDateString();
 
         foreach ($lines->chunk(self::INSERT_CHUNK) as $chunk) {
             DsrLine::insert($chunk->map(fn (DsrLineData $line) => [
                 'dsr_report_id' => $saved->id,
+                'vendor_id' => $vendorId,
                 'site_id' => $siteId,
                 'article_id' => $articleIds[$line->articleCode],
                 'transaction_date' => $date,

@@ -32,6 +32,9 @@ const COLUMNS = {
     vatExempt: ['vatexemptsales'],
     vatable: ['vatablesales'],
     total: ['totalsalesexclvat', 'totalsales', 'netsales', 'salesamount'],
+    vendorCodeName: ['vendorcodename'],
+    vendorCode: ['vendorcode'],
+    vendorName: ['vendorname'],
     siteCodeName: ['sitecodename'],
     siteCode: ['sitecode'],
     siteName: ['sitename'],
@@ -42,9 +45,16 @@ const COLUMNS = {
 
 type Column = keyof typeof COLUMNS;
 type ColumnMap = Partial<Record<Column, number>>;
-type Site = { code: string; name: string };
+/** A vendor or store: "[code] name" in the portal. */
+type Party = { code: string; name: string };
+
+const VENDOR_LABELS = new Set<string>([
+    ...COLUMNS.vendorCodeName,
+    ...COLUMNS.vendorCode,
+]);
 
 const LABELS = new Set<string>([
+    ...VENDOR_LABELS,
     ...COLUMNS.siteCodeName,
     ...COLUMNS.siteCode,
     ...COLUMNS.date,
@@ -77,7 +87,7 @@ const isItemHeader = (map: ColumnMap) =>
     map.total !== undefined;
 
 /** "[1230] SVI AURA PREMIER" → code + name. */
-export function parseSite(value: unknown): Site | null {
+export function parseSite(value: unknown): Party | null {
     const text = cellText(value);
     const match = /^\[\s*([^\]]+?)\s*\]\s*(.*)$/.exec(text);
 
@@ -172,7 +182,8 @@ export function parseDsrWorkbook(workbook: XLSX.WorkBook): ParsedDsrFile {
             },
         );
 
-        let site: Site | null = null;
+        let vendor: Party | null = null;
+        let site: Party | null = null;
         let date: string | null = null;
         let status: string | null = null;
         let table: ColumnMap | null = null;
@@ -215,9 +226,13 @@ export function parseDsrWorkbook(workbook: XLSX.WorkBook): ParsedDsrFile {
                     table = null;
                 } else {
                     const line = toLine(row, table, articleCode);
+                    const rowVendor =
+                        table.vendorCode !== undefined
+                            ? toParty(row, table.vendorCode, table.vendorName)
+                            : vendor;
                     const rowSite =
                         table.siteCode !== undefined
-                            ? toSite(row, table)
+                            ? toParty(row, table.siteCode, table.siteName)
                             : site;
                     const rowDate =
                         table.date !== undefined
@@ -233,13 +248,14 @@ export function parseDsrWorkbook(workbook: XLSX.WorkBook): ParsedDsrFile {
                         warnings.push(
                             `${where}: skipped, quantity or sales is not a number.`,
                         );
-                    } else if (!rowSite || !rowDate) {
+                    } else if (!rowVendor || !rowSite || !rowDate) {
                         warnings.push(
-                            `${where}: skipped, store or transaction date is missing.`,
+                            `${where}: skipped, vendor, store or transaction date is missing.`,
                         );
                     } else {
                         tableCents += toCents(line.total_sales);
                         addLine(reports, warnings, block, {
+                            vendor: rowVendor,
                             site: rowSite,
                             date: rowDate,
                             company:
@@ -274,6 +290,8 @@ export function parseDsrWorkbook(workbook: XLSX.WorkBook): ParsedDsrFile {
                     date = parseDate(value) ?? date;
                 } else if (label === 'datastatus') {
                     status = cellText(value) || status;
+                } else if (VENDOR_LABELS.has(label)) {
+                    vendor = parseSite(value) ?? vendor;
                 } else {
                     site = parseSite(value) ?? site;
                 }
@@ -284,6 +302,12 @@ export function parseDsrWorkbook(workbook: XLSX.WorkBook): ParsedDsrFile {
     if (!reports.size && sawListExport) {
         throw new Error(
             'This is the DSR list export, which only has totals per store. In the vendor portal, select the reports and use "Export Document" instead, which includes the items sold.',
+        );
+    }
+
+    if (!reports.size && warnings.length) {
+        throw new Error(
+            `No lines could be imported. ${warnings[0]}${warnings.length > 1 ? ` (and ${warnings.length - 1} more)` : ''}`,
         );
     }
 
@@ -299,21 +323,25 @@ export function parseDsrWorkbook(workbook: XLSX.WorkBook): ParsedDsrFile {
             .sort(
                 (a, b) =>
                     a.transaction_date.localeCompare(b.transaction_date) ||
+                    a.vendor_code.localeCompare(b.vendor_code) ||
                     a.site_code.localeCompare(b.site_code),
             ),
         warnings,
     };
 }
 
-function toSite(row: unknown[], table: ColumnMap): Site | null {
-    const code = cellText(row[table.siteCode ?? -1]);
+function toParty(
+    row: unknown[],
+    codeColumn: number,
+    nameColumn: number | undefined,
+): Party | null {
+    const code = cellText(row[codeColumn]);
 
     if (!code) {
         return null;
     }
 
-    const name =
-        table.siteName !== undefined ? cellText(row[table.siteName]) : '';
+    const name = nameColumn !== undefined ? cellText(row[nameColumn]) : '';
 
     return { code, name: name || code };
 }
@@ -359,14 +387,15 @@ function addLine(
     warnings: string[],
     block: number,
     entry: {
-        site: Site;
+        vendor: Party;
+        site: Party;
         date: string;
         company: string;
         status: string | null;
         line: DsrLineInput;
     },
 ): void {
-    const id = `${entry.site.code}|${entry.date}`;
+    const id = `${entry.vendor.code}|${entry.site.code}|${entry.date}`;
     const existing = reports.get(id);
 
     if (existing && existing.block !== block) {
@@ -378,6 +407,8 @@ function addLine(
     }
 
     const report = reports.get(id) ?? {
+        vendor_code: entry.vendor.code,
+        vendor_name: entry.vendor.name,
         site_code: entry.site.code,
         site_name: entry.site.name,
         company: entry.company,

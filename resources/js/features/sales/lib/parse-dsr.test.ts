@@ -107,6 +107,8 @@ describe('parseDsrWorkbook', () => {
         expect(result.warnings).toEqual([]);
         expect(result.reports).toHaveLength(2);
         expect(result.reports[1]).toMatchObject({
+            vendor_code: '150551',
+            vendor_name: 'DEMO VENDOR',
             site_code: '1230',
             site_name: 'SVI AURA PREMIER',
             company: 'SVI',
@@ -125,21 +127,26 @@ describe('parseDsrWorkbook', () => {
         expect(result.reports[0].lines[0].total_sales).toBe('1019.64');
     });
 
-    it('reads flat exports with store and date on every row', () => {
+    it('reads flat exports and keeps each vendor separate', () => {
+        const header = [
+            'Vendor Code',
+            'Vendor Name',
+            'Site Code',
+            'Site Name',
+            'Company Name',
+            'Transaction Date',
+            'Article Code',
+            'Description',
+            'Sales Qty',
+            'Total Sales',
+        ];
         const result = parseDsrWorkbook(
             book({
                 Export: [
+                    header,
                     [
-                        'Site Code',
-                        'Site Name',
-                        'Company Name',
-                        'Transaction Date',
-                        'Article Code',
-                        'Description',
-                        'Sales Qty',
-                        'Total Sales',
-                    ],
-                    [
+                        'V1',
+                        'VENDOR ONE',
                         '0001',
                         'SVI MANILA',
                         'SVI',
@@ -150,6 +157,8 @@ describe('parseDsrWorkbook', () => {
                         60,
                     ],
                     [
+                        'V1',
+                        'VENDOR ONE',
                         '0001',
                         'SVI MANILA',
                         'SVI',
@@ -160,6 +169,20 @@ describe('parseDsrWorkbook', () => {
                         30,
                     ],
                     [
+                        'V2',
+                        'VENDOR TWO',
+                        '0001',
+                        'SVI MANILA',
+                        'SVI',
+                        '2026-11-09',
+                        'B1',
+                        'Tea',
+                        3,
+                        45,
+                    ],
+                    [
+                        'V1',
+                        'VENDOR ONE',
                         '0002',
                         'SMCo FESTIVAL MALL',
                         'SMCo',
@@ -175,16 +198,39 @@ describe('parseDsrWorkbook', () => {
 
         expect(
             result.reports.map((r) => [
+                r.vendor_code,
+                r.vendor_name,
                 r.site_code,
                 r.transaction_date,
                 r.lines.length,
             ]),
         ).toEqual([
-            ['0001', '2026-11-09', 2],
-            ['0002', '2026-11-10', 1],
+            ['V1', 'VENDOR ONE', '0001', '2026-11-09', 2],
+            ['V2', 'VENDOR TWO', '0001', '2026-11-09', 1],
+            ['V1', 'VENDOR ONE', '0002', '2026-11-10', 1],
         ]);
-        expect(result.reports[1].company).toBe('SMCo');
+        expect(result.reports[2].company).toBe('SMCo');
         expect(result.reports[0].lines[0].vatable_sales).toBe('60');
+    });
+
+    it('explains why nothing could be read when every row is incomplete', () => {
+        const file = book({
+            Export: [
+                [
+                    'Site Code',
+                    'Site Name',
+                    'Transaction Date',
+                    'Article Code',
+                    'Sales Qty',
+                    'Total Sales',
+                ],
+                ['0001', 'SVI MANILA', '2026-11-09', 'A1', 2, 60],
+            ],
+        });
+
+        expect(() => parseDsrWorkbook(file)).toThrow(
+            /Export row 2: skipped, vendor, store or transaction date is missing/,
+        );
     });
 
     it('keeps only the last copy of a store-day exported twice', () => {
@@ -340,6 +386,7 @@ describe('vendor portal exports', () => {
         expect(result.warnings).toEqual([]);
         expect(
             result.reports.map((r) => [
+                r.vendor_code,
                 r.site_code,
                 r.site_name,
                 r.company,
@@ -347,8 +394,8 @@ describe('vendor portal exports', () => {
                 r.lines.length,
             ]),
         ).toEqual([
-            ['0779', 'SMCo DEMO MALL', 'SMCo', '2026-11-10', 1],
-            ['9001', 'SVI DEMO NORTH', 'SVI', '2026-11-10', 2],
+            ['900001', '0779', 'SMCo DEMO MALL', 'SMCo', '2026-11-10', 1],
+            ['900001', '9001', 'SVI DEMO NORTH', 'SVI', '2026-11-10', 2],
         ]);
         expect(result.reports[1].lines[0]).toEqual({
             article_code: '80000001',

@@ -184,9 +184,13 @@ sales report. How the pieces fit:
     - _Trade-off, chosen on purpose:_ small synchronous batches instead of a
       queued job. Each batch takes well under a second, users see the result
       immediately, and shared hosting runs queues only through cron.
-- **Idempotent by design:** one `dsr_reports` row per store per day (unique
-  index). Re-importing a store-day replaces its lines, so revised DSRs from SM
-  never double-count.
+- **Idempotent by design:** one `dsr_reports` row per vendor, store and day
+  (unique index). Re-importing a store-day replaces its lines, so revised DSRs
+  from SM never double-count, and one vendor's import never touches another's.
+- **Report filters** (vendors, companies, stores) are lists in the URL
+  (`companies[]=SVI`); empty means "all". Build URLs with `reportUrl()` in
+  `features/sales/lib/report-query.ts`, and keep page roots on
+  `grid-cols-1` so wide tables scroll inside their box on phones.
 - **Money is exact:** amounts are validated as plain decimal strings and
   summed with `bcadd`; never use floats when storing sales.
 - **Reports:** `BuildSalesReport` aggregates `dsr_lines` in SQL (indexed by

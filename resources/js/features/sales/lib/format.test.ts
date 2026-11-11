@@ -1,5 +1,35 @@
 import { describe, expect, it } from 'vitest';
-import { formatMoney, formatQty, percentChange, topSlices } from './format';
+import {
+    describeScope,
+    formatMoney,
+    formatQty,
+    percentChange,
+    topSlices,
+} from './format';
+
+describe('describeScope', () => {
+    const filters = {
+        vendors: [
+            { code: 'V1', name: 'VENDOR ONE' },
+            { code: 'V2', name: 'VENDOR TWO' },
+        ],
+        sites: [{ code: '0001', name: 'SVI MANILA', company: 'SVI' }],
+    };
+    const none = { vendors: [], companies: [], sites: [] };
+
+    it.each([
+        [none, 'All stores'],
+        [{ ...none, sites: ['0001'] }, 'SVI MANILA'],
+        [{ ...none, sites: ['0001', '0002', '0003'] }, '3 stores'],
+        [{ ...none, companies: ['SVI'] }, 'SVI stores'],
+        [{ ...none, companies: ['SVI', 'SSM'] }, 'SVI and SSM stores'],
+        [{ ...none, companies: ['SVI', 'SSM', 'SMCo'] }, '3 companies'],
+        [{ ...none, vendors: ['V2'] }, 'All stores · VENDOR TWO'],
+        [{ ...none, vendors: ['V1', 'V2'] }, 'All stores · 2 vendors'],
+    ])('%j → %s', (selected, expected) => {
+        expect(describeScope(filters, selected)).toBe(expected);
+    });
+});
 
 describe('format', () => {
     it('formats pesos and quantities', () => {

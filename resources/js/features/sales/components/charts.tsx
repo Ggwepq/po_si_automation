@@ -51,7 +51,7 @@ export function ChartCard({
     children: React.ReactNode;
 }) {
     return (
-        <section className="grid break-inside-avoid gap-3 rounded-xl border bg-card p-4">
+        <section className="grid break-inside-avoid grid-cols-1 gap-3 rounded-xl border bg-card p-4">
             <h3 className="text-sm font-semibold">{title}</h3>
             {children}
         </section>

@@ -154,6 +154,27 @@
     }
 }
 
+/* Date picker: a small dot under days that have imported sales. */
+.has-sales > button {
+    position: relative;
+}
+
+.has-sales > button::after {
+    content: '';
+    position: absolute;
+    bottom: 3px;
+    left: 50%;
+    width: 4px;
+    height: 4px;
+    border-radius: 9999px;
+    background: var(--primary);
+    transform: translateX(-50%);
+}
+
+.has-sales[aria-selected='true'] > button::after {
+    background: var(--primary-foreground);
+}
+
 /* Printed reports: content only, on white paper, without app navigation. */
 @media print {
     @page {

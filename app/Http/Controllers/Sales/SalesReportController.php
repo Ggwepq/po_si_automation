@@ -14,6 +14,7 @@ class SalesReportController extends Controller
     public function show(SalesReportRequest $request, BuildSalesReport $report, GetSalesReportFilters $filters): Response
     {
         $period = $request->period($filters->latestDate());
+        $filter = $request->filter();
         $previous = $period->previous();
         $next = $period->next();
 
@@ -27,9 +28,13 @@ class SalesReportController extends Controller
                 'previous' => ['start' => $previous->start->toDateString(), 'end' => $previous->end->toDateString(), 'label' => $previous->label()],
                 'next' => ['start' => $next->start->toDateString(), 'end' => $next->end->toDateString(), 'label' => $next->label()],
             ],
-            'selected' => ['company' => $request->company(), 'site' => $request->siteCode()],
+            'selected' => [
+                'vendors' => $filter->vendorCodes,
+                'companies' => $filter->companies,
+                'sites' => $filter->siteCodes,
+            ],
             'filters' => $filters->handle(),
-            'report' => $report->handle($period, $request->company(), $request->siteCode()),
+            'report' => $report->handle($period, $filter),
             'generatedAt' => now()->toIso8601String(),
         ]);
     }

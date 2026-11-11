@@ -8,9 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // One DSR document: a single store's sales for a single day.
+        // One DSR document: a vendor's sales at a single store for a single day.
         Schema::create('dsr_reports', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('vendor_id')->constrained()->restrictOnDelete();
             $table->foreignId('site_id')->constrained()->restrictOnDelete();
             $table->date('transaction_date');
             $table->string('data_status', 30)->nullable();
@@ -21,7 +22,7 @@ return new class extends Migration
             $table->timestamps();
 
             // Re-importing a store-day replaces it instead of duplicating it.
-            $table->unique(['site_id', 'transaction_date']);
+            $table->unique(['vendor_id', 'site_id', 'transaction_date']);
             $table->index('transaction_date');
         });
     }

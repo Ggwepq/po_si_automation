@@ -21,7 +21,7 @@ export type ImportRecord = {
 
 export function ImportHistory({ imports }: { imports: ImportRecord[] }) {
     return (
-        <section className="grid gap-3">
+        <section className="grid grid-cols-1 gap-3">
             <h2 className="text-base font-semibold">Recent imports</h2>
             <div className="rounded-xl border">
                 <Table>

@@ -8,11 +8,12 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // Item lines of a DSR. Date and site are copied from the report so
-        // period reports aggregate this table alone, without joins.
+        // Item lines of a DSR. Date, vendor and site are copied from the report
+        // so period reports aggregate this table alone, without joins.
         Schema::create('dsr_lines', function (Blueprint $table) {
             $table->id();
             $table->foreignId('dsr_report_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('vendor_id')->constrained()->restrictOnDelete();
             $table->foreignId('site_id')->constrained()->restrictOnDelete();
             $table->foreignId('article_id')->constrained()->restrictOnDelete();
             $table->date('transaction_date');
@@ -23,6 +24,7 @@ return new class extends Migration
 
             $table->index(['transaction_date', 'article_id']);
             $table->index(['transaction_date', 'site_id']);
+            $table->index(['transaction_date', 'vendor_id']);
         });
     }
 

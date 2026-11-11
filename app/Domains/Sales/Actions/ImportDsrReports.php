@@ -8,9 +8,8 @@ use App\Domains\Sales\Models\Article;
 use App\Domains\Sales\Models\DsrImport;
 use App\Domains\Sales\Models\DsrLine;
 use App\Domains\Sales\Models\DsrReport;
-use App\Domains\Sales\Models\Site;
-use App\Domains\Sales\Models\Vendor;
 use App\Domains\Sales\Support\SalesReportCache;
+use App\Domains\Sales\Support\StoreDirectory;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -26,7 +25,10 @@ class ImportDsrReports
 {
     private const INSERT_CHUNK = 500;
 
-    public function __construct(private SalesReportCache $cache) {}
+    public function __construct(
+        private SalesReportCache $cache,
+        private StoreDirectory $stores,
+    ) {}
 
     /** @param list<DsrReportData> $reports */
     public function handle(array $reports, string $fileName, ?User $user): DsrImport
@@ -34,8 +36,14 @@ class ImportDsrReports
         $this->rejectDuplicates($reports);
 
         $import = DB::transaction(function () use ($reports, $fileName, $user): DsrImport {
-            $vendorIds = $this->saveVendors($reports);
-            $siteIds = $this->saveSites($reports);
+            $vendorIds = $this->stores->vendorIds(array_map(
+                fn (DsrReportData $r) => ['code' => $r->vendorCode, 'name' => $r->vendorName],
+                $reports,
+            ));
+            $siteIds = $this->stores->siteIds(array_map(
+                fn (DsrReportData $r) => ['code' => $r->siteCode, 'name' => $r->siteName, 'company' => $r->company],
+                $reports,
+            ));
             $articleIds = $this->saveArticles($reports);
 
             $import = DsrImport::create([
@@ -83,42 +91,6 @@ class ImportDsrReports
                 'reports' => 'The file contains the same store and date more than once: '.$duplicates->implode(', ').'.',
             ]);
         }
-    }
-
-    /**
-     * @param  list<DsrReportData>  $reports
-     * @return array<string, int> vendor id by vendor code
-     */
-    private function saveVendors(array $reports): array
-    {
-        $rows = collect($reports)
-            ->keyBy(fn (DsrReportData $r) => $r->vendorCode)
-            ->map(fn (DsrReportData $r) => ['code' => $r->vendorCode, 'name' => $r->vendorName])
-            ->values()
-            ->all();
-
-        Vendor::upsert($rows, ['code'], ['name']);
-
-        /** @var array<string, int> */
-        return Vendor::whereIn('code', array_column($rows, 'code'))->pluck('id', 'code')->all();
-    }
-
-    /**
-     * @param  list<DsrReportData>  $reports
-     * @return array<string, int> site id by site code
-     */
-    private function saveSites(array $reports): array
-    {
-        $rows = collect($reports)
-            ->keyBy(fn (DsrReportData $r) => $r->siteCode)
-            ->map(fn (DsrReportData $r) => ['code' => $r->siteCode, 'name' => $r->siteName, 'company' => $r->company])
-            ->values()
-            ->all();
-
-        Site::upsert($rows, ['code'], ['name', 'company']);
-
-        /** @var array<string, int> */
-        return Site::whereIn('code', array_column($rows, 'code'))->pluck('id', 'code')->all();
     }
 
     /**

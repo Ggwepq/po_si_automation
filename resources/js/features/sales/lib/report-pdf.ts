@@ -13,12 +13,19 @@ import {
     pdfQty,
     trendChart,
 } from './pdf-charts';
-import type { DsrCoverage, ReportPeriod, SalesReport } from './types';
+import { RECONCILE_LABELS } from './reconciliation';
+import type {
+    DsrCoverage,
+    DsrReconciliation,
+    ReportPeriod,
+    SalesReport,
+} from './types';
 
 export type ReportPdfInput = {
     report: SalesReport;
     period: ReportPeriod;
     coverage?: DsrCoverage;
+    reconciliation?: DsrReconciliation;
     scope: string;
     generatedAt: string;
     /** PNG data URL of the company logo. */
@@ -31,6 +38,7 @@ const PAGE = { width: 210, height: 297, margin: 14 };
 const CONTENT = PAGE.width - PAGE.margin * 2;
 const HALF = (CONTENT - 6) / 2;
 const MAX_ITEM_ROWS = 100;
+const MAX_ISSUE_ROWS = 40;
 
 const peso = (value: number) => `PHP ${pdfMoney(value)}`;
 
@@ -141,6 +149,7 @@ export function buildReportPdf(input: ReportPdfInput): jsPDF {
         money: peso,
         qty: pdfQty,
         coverage: input.coverage,
+        reconciliation: input.reconciliation,
     });
 
     heading('Executive highlights');
@@ -406,6 +415,49 @@ export function buildReportPdf(input: ReportPdfInput): jsPDF {
             4: { halign: 'right' },
         },
     });
+
+    const check = input.reconciliation;
+
+    if (check?.checked && check.issues.length > 0) {
+        afterTable();
+        heading(
+            "Month-end check against SM's DSR Summary",
+            `Store-days that need attention (first ${Math.min(check.issues.length, MAX_ISSUE_ROWS)})`,
+        );
+        autoTable(doc, {
+            ...tableStyle,
+            startY: y,
+            head: [
+                [
+                    'Date',
+                    'Store',
+                    'SM Summary',
+                    'Imported DSR',
+                    'Difference',
+                    'Status',
+                ],
+            ],
+            body: check.issues
+                .slice(0, MAX_ISSUE_ROWS)
+                .map((issue): RowInput => [
+                    formatTrendLabel(issue.date),
+                    `${issue.siteName} (${issue.siteCode})`,
+                    issue.summary === null
+                        ? '-'
+                        : pdfMoney(Number(issue.summary)),
+                    issue.detail === null
+                        ? '-'
+                        : pdfMoney(Number(issue.detail)),
+                    pdfMoney(Number(issue.difference)),
+                    RECONCILE_LABELS[issue.status],
+                ]),
+            columnStyles: {
+                2: { halign: 'right' },
+                3: { halign: 'right' },
+                4: { halign: 'right' },
+            },
+        });
+    }
 
     // Footer on every page
     const pages = doc.getNumberOfPages();

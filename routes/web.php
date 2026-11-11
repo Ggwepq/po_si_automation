@@ -19,6 +19,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('sales/import', [DsrImportController::class, 'store'])
         ->middleware('throttle:60,1')
         ->name('sales.import.store');
+    Route::post('sales/import/summary', [DsrImportController::class, 'storeSummary'])
+        ->middleware('throttle:60,1')
+        ->name('sales.import.summary');
 });
 
 require __DIR__.'/settings.php';

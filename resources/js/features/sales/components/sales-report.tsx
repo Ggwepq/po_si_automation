@@ -17,6 +17,7 @@ import {
 } from '../lib/format';
 import type {
     DsrCoverage,
+    DsrReconciliation,
     ReportFilters,
     ReportPeriod,
     ReportSelection,
@@ -24,6 +25,7 @@ import type {
 } from '../lib/types';
 import { ChartCard, SalesTrend, SharePie, TopItemsBar } from './charts';
 import { DataCompleteness } from './data-completeness';
+import { ReconciliationPanel } from './reconciliation-panel';
 import { ExecutiveHighlights } from './executive-highlights';
 import { ItemsTable } from './items-table';
 import { ReportToolbar } from './report-toolbar';
@@ -36,6 +38,7 @@ type Props = {
     selected: ReportSelection;
     report: Report;
     coverage: DsrCoverage;
+    reconciliation: DsrReconciliation;
     generatedAt: string;
 };
 
@@ -69,6 +72,7 @@ export function SalesReport({
     selected,
     report,
     coverage,
+    reconciliation,
     generatedAt,
 }: Props) {
     const [measure, setMeasure] = useState<'qty' | 'sales'>('qty');
@@ -80,6 +84,7 @@ export function SalesReport({
         money: formatMoney,
         qty: formatQty,
         coverage,
+        reconciliation,
     });
 
     const openPdf = async (print: boolean) => {
@@ -91,6 +96,7 @@ export function SalesReport({
                     report,
                     period,
                     coverage,
+                    reconciliation,
                     scope,
                     generatedAt,
                     autoPrint: print,
@@ -162,6 +168,8 @@ export function SalesReport({
                     <ExecutiveHighlights insights={insights} />
 
                     <DataCompleteness coverage={coverage} />
+
+                    <ReconciliationPanel reconciliation={reconciliation} />
 
                     {!hasSales && (
                         <p className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">

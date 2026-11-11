@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Sales;
 use App\Domains\Sales\Actions\BuildSalesReport;
 use App\Domains\Sales\Actions\CheckDsrCoverage;
 use App\Domains\Sales\Actions\GetSalesReportFilters;
+use App\Domains\Sales\Actions\ReconcileDsr;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Sales\SalesReportRequest;
 use Inertia\Inertia;
@@ -17,6 +18,7 @@ class SalesReportController extends Controller
         BuildSalesReport $report,
         CheckDsrCoverage $coverage,
         GetSalesReportFilters $filters,
+        ReconcileDsr $reconcile,
     ): Response {
         $period = $request->period($filters->latestDate());
         $filter = $request->filter();
@@ -41,6 +43,7 @@ class SalesReportController extends Controller
             'filters' => $filters->handle(),
             'report' => $report->handle($period, $filter),
             'coverage' => $coverage->handle($period, $filter),
+            'reconciliation' => $reconcile->handle($period, $filter),
             'generatedAt' => now()->toIso8601String(),
         ]);
     }

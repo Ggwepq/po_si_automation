@@ -10,6 +10,7 @@ import {
 export type ImportRecord = {
     id: number;
     fileName: string;
+    kind: 'detail' | 'summary';
     reportCount: number;
     lineCount: number;
     replacedCount: number;
@@ -28,6 +29,7 @@ export function ImportHistory({ imports }: { imports: ImportRecord[] }) {
                     <TableHeader>
                         <TableRow>
                             <TableHead>File</TableHead>
+                            <TableHead>Type</TableHead>
                             <TableHead>Sales dates</TableHead>
                             <TableHead className="text-right">
                                 Store-days
@@ -47,6 +49,11 @@ export function ImportHistory({ imports }: { imports: ImportRecord[] }) {
                                     title={record.fileName}
                                 >
                                     {record.fileName}
+                                </TableCell>
+                                <TableCell className="whitespace-nowrap">
+                                    {record.kind === 'summary'
+                                        ? 'DSR Summary'
+                                        : 'DSR'}
                                 </TableCell>
                                 <TableCell>
                                     {record.firstDate === record.lastDate
@@ -75,7 +82,7 @@ export function ImportHistory({ imports }: { imports: ImportRecord[] }) {
                         {!imports.length && (
                             <TableRow>
                                 <TableCell
-                                    colSpan={6}
+                                    colSpan={7}
                                     className="py-8 text-center text-muted-foreground"
                                 >
                                     No imports yet.

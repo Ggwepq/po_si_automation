@@ -13,17 +13,27 @@ import type { DsrCoverage } from '../lib/types';
 
 const dayNumber = (iso: string) => Number(iso.slice(8, 10));
 
+const CELL = {
+    imported: { label: 'DSR imported', className: 'bg-emerald-500/80' },
+    noSales: {
+        label: 'No sales per DSR Summary',
+        className: 'bg-slate-400/40',
+    },
+    missing: {
+        label: 'No DSR',
+        className: 'border border-rose-400/70 bg-rose-500/15',
+    },
+} as const;
+
 function Legend() {
     return (
         <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1.5">
-                <span className="size-3 rounded-sm bg-emerald-500/80" /> DSR
-                imported
-            </span>
-            <span className="flex items-center gap-1.5">
-                <span className="size-3 rounded-sm border border-rose-400/70 bg-rose-500/15" />{' '}
-                No DSR
-            </span>
+            {Object.values(CELL).map((cell) => (
+                <span key={cell.label} className="flex items-center gap-1.5">
+                    <span className={cn('size-3 rounded-sm', cell.className)} />
+                    {cell.label}
+                </span>
+            ))}
         </div>
     );
 }
@@ -60,26 +70,29 @@ function DayGrid({ coverage }: { coverage: DsrCoverage }) {
                                 {store.name}
                             </td>
                             {coverage.days.map((day) => {
-                                const missing = store.missing.includes(day);
+                                const state = store.missing.includes(day)
+                                    ? 'missing'
+                                    : store.noSales.includes(day)
+                                      ? 'noSales'
+                                      : 'imported';
 
                                 return (
                                     <td
                                         key={day}
-                                        title={`${store.name} · ${formatTrendLabel(day)}: ${missing ? 'no DSR' : 'imported'}`}
+                                        title={`${store.name} · ${formatTrendLabel(day)}: ${CELL[state].label}`}
                                     >
                                         <span
                                             className={cn(
                                                 'block size-4 rounded-sm',
-                                                missing
-                                                    ? 'border border-rose-400/70 bg-rose-500/15'
-                                                    : 'bg-emerald-500/80',
+                                                CELL[state].className,
                                             )}
                                         />
                                     </td>
                                 );
                             })}
                             <td className="pl-3 text-right tabular-nums">
-                                {store.importedDays}/{coverage.days.length}
+                                {store.importedDays + store.noSalesDays}/
+                                {coverage.days.length}
                             </td>
                         </tr>
                     ))}
@@ -150,7 +163,7 @@ export function DataCompleteness({ coverage }: { coverage: DsrCoverage }) {
 
     const gaps = coverage.daysWithoutAnyDsr;
     const storeGaps = coverage.stores.filter(
-        (s) => s.importedDays < (coverage.daysChecked ?? 0),
+        (s) => s.importedDays + s.noSalesDays < (coverage.daysChecked ?? 0),
     ).length;
 
     return (
@@ -177,7 +190,7 @@ export function DataCompleteness({ coverage }: { coverage: DsrCoverage }) {
                     </span>
                     <span className="block text-sm text-muted-foreground">
                         {coverage.complete
-                            ? `Every store has a DSR for all ${coverage.daysChecked} days checked.`
+                            ? `Every store has a DSR (or SM shows no sales) for all ${coverage.daysChecked} days checked.`
                             : gaps.length
                               ? `${gaps.length} day${gaps.length === 1 ? '' : 's'} with no DSR from any store — probably not imported yet.`
                               : `${storeGaps} store${storeGaps === 1 ? '' : 's'} without a DSR on some days (possibly days without sales).`}
@@ -212,8 +225,8 @@ export function DataCompleteness({ coverage }: { coverage: DsrCoverage }) {
                     <Legend />
                     <p className="text-xs text-muted-foreground">
                         Checked up to yesterday; SM posts each day&apos;s DSR
-                        the next day. A single store without a DSR may simply
-                        have had no sales.
+                        the next day. Import SM&apos;s DSR Summary to tell days
+                        without sales apart from missing DSRs.
                     </p>
                 </div>
             </CollapsibleContent>

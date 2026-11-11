@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import { parseDsrWorkbook } from './parse-dsr';
+import { parseSalesWorkbook } from './parse-sales-file';
 
 export type DsrWorkerRequest = { bytes: ArrayBuffer };
 
@@ -13,7 +13,7 @@ const scope = self as unknown as {
 scope.onmessage = ({ data }) => {
     try {
         const workbook = XLSX.read(data.bytes, { type: 'array' });
-        scope.postMessage({ result: parseDsrWorkbook(workbook) });
+        scope.postMessage({ result: parseSalesWorkbook(workbook) });
     } catch (error) {
         scope.postMessage({ error: (error as Error).message });
     }

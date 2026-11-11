@@ -18,7 +18,7 @@ import type { DsrLineInput, DsrReportInput, ParsedDsrFile } from './types';
  * file's own "Grand Total" row.
  */
 
-const key = (value: unknown) =>
+export const headerKey = (value: unknown) =>
     cellText(value)
         .toLowerCase()
         .replace(/[^a-z0-9]/g, '');
@@ -62,7 +62,7 @@ const LABELS = new Set<string>([
 ]);
 
 function mapColumns(row: unknown[]): ColumnMap {
-    const keys = row.map(key);
+    const keys = row.map(headerKey);
     const map: ColumnMap = {};
 
     for (const [column, aliases] of Object.entries(COLUMNS) as [
@@ -140,7 +140,8 @@ export function parseDecimal(value: unknown): string | null {
 }
 
 /** The chain prefix of an SM store name, e.g. "SVI AURA PREMIER" → "SVI". */
-const companyFromSiteName = (name: string) => name.split(/\s+/)[0] || name;
+export const companyFromSiteName = (name: string) =>
+    name.split(/\s+/)[0] || name;
 
 const filled = (cell: unknown) =>
     typeof cell === 'number' || cellText(cell) !== '';
@@ -164,7 +165,7 @@ const formatCents = (cents: number) => (cents / 100).toFixed(2);
 const isListHeader = (row: unknown[], map: ColumnMap) =>
     map.articleCode === undefined &&
     map.siteCode !== undefined &&
-    row.some((cell) => key(cell) === 'articlecount');
+    row.some((cell) => headerKey(cell) === 'articlecount');
 
 export function parseDsrWorkbook(workbook: XLSX.WorkBook): ParsedDsrFile {
     const reports = new Map<string, DsrReportInput & { block: number }>();
@@ -278,7 +279,7 @@ export function parseDsrWorkbook(workbook: XLSX.WorkBook): ParsedDsrFile {
             }
 
             row.forEach((cell, index) => {
-                const label = key(cell);
+                const label = headerKey(cell);
 
                 if (!LABELS.has(label)) {
                     return;
@@ -318,6 +319,7 @@ export function parseDsrWorkbook(workbook: XLSX.WorkBook): ParsedDsrFile {
     }
 
     return {
+        kind: 'detail',
         reports: [...reports.values()]
             .map(({ block: _block, ...report }) => report)
             .sort(

@@ -25,9 +25,31 @@ export type DsrReportInput = {
 };
 
 export type ParsedDsrFile = {
+    kind: 'detail';
     reports: DsrReportInput[];
     warnings: string[];
 };
+
+/** SM's official total for a vendor, store and day (DSR Summary export). */
+export type DsrSummaryInput = {
+    vendor_code: string;
+    vendor_name: string;
+    site_code: string;
+    site_name: string;
+    company: string;
+    /** YYYY-MM-DD */
+    transaction_date: string;
+    total_sales: string;
+};
+
+export type ParsedDsrSummaryFile = {
+    kind: 'summary';
+    summaries: DsrSummaryInput[];
+    warnings: string[];
+};
+
+/** Either export the Import page accepts. */
+export type ParsedSalesFile = ParsedDsrFile | ParsedDsrSummaryFile;
 
 export type PeriodType =
     | 'daily'
@@ -118,6 +140,10 @@ export type DsrCoverage = {
         name: string;
         company: string;
         importedDays: number;
+        /** Days without a DSR that SM's DSR Summary shows as no sales (0.00 or not listed). */
+        noSalesDays: number;
+        /** Those 0.00 days (day mode only). */
+        noSales: string[];
         /** Days without a DSR (day mode only). */
         missing: string[];
         /** Per-month counts (month mode only). */
@@ -131,4 +157,44 @@ export type ReportSelection = {
     vendors: string[];
     companies: string[];
     sites: string[];
+};
+
+export type ReconcileStatus =
+    | 'match'
+    | 'no_sales'
+    | 'differs'
+    | 'not_imported'
+    | 'not_in_summary';
+
+/** Month-end check of the imported DSRs against SM's DSR Summary. */
+export type DsrReconciliation = {
+    /** False when no DSR Summary is imported for this period. */
+    checked: boolean;
+    balanced: boolean;
+    daysChecked: number;
+    counts: Record<ReconcileStatus, number>;
+    /** Exact decimal strings, e.g. "1146.38". */
+    summaryTotal: string;
+    detailTotal: string;
+    difference: string;
+    /** Store-days that need attention (first 200). */
+    issues: {
+        date: string;
+        siteCode: string;
+        siteName: string;
+        company: string;
+        summary: string | null;
+        detail: string | null;
+        difference: string;
+        status: ReconcileStatus;
+    }[];
+    stores: {
+        code: string;
+        name: string;
+        company: string;
+        summary: string;
+        detail: string;
+        difference: string;
+        issues: number;
+    }[];
 };

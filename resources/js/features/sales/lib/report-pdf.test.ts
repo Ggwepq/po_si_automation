@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { reconciliation } from './reconciliation.fixture';
 import { buildReportPdf } from './report-pdf';
 import type { ReportPeriod, SalesReport, SalesTotals } from './types';
 
@@ -104,6 +105,20 @@ describe('buildReportPdf', () => {
 
         expect(content).toContain('up 16.3% vs Nov 2 - Nov 8, 2026');
         expect(content).toContain('4,650.00');
+    });
+
+    it('adds the month-end check with the store-days to fix', () => {
+        const content = buildReportPdf({
+            report,
+            period,
+            scope: 'All stores',
+            generatedAt: '2026-11-11T10:00:00+08:00',
+            reconciliation: reconciliation(),
+        }).output();
+
+        expect(content).toContain('Month-end check');
+        expect(content).toContain('DSR not imported');
+        expect(content).toContain('SVI DEMO NORTH \\(0001\\)');
     });
 
     it('opens the print dialog when asked', () => {

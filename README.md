@@ -157,16 +157,32 @@ file again is safe. Every import is listed with who imported it and when.
   which DSRs are imported for the period, checked up to yesterday because SM
   posts each day's DSR the next day. Days with no DSR from _any_ store are
   listed in red with an Import DSR button; these are almost always missed
-  imports. A single store without a DSR may simply have had no sales. Periods
-  longer than three months show per-month counts instead of days.
+  imports. Once SM's DSR Summary is imported, a store with 0.00 (or no row)
+  in the Summary for a day is shown grey as "No sales", so only real gaps stay
+  red. Periods longer than three months show per-month counts instead of days.
+- **Month-end check** (on screen; issues also in the PDF): compares SM's
+  **DSR Summary** (its official total per store and day) with the imported
+  DSRs. Each store-day is a Match, No sales (0.00), Differs (with the
+  amount), DSR not imported, or Not in Summary, and the highlights say
+  whether the month balances.
+
+### DSR Summary (month-end check)
+
+In the vendor portal, open **DSR Summary**, choose the month and export it
+(the file is usually named `DSRS_DETAIL.xlsx`). Import it on **Sales → Import
+DSR** like a DSR; the app recognises it. The Summary never adds to sales; it
+is only used for the month-end check and completeness. Re-importing it
+replaces SM's figures, so import it again whenever SM revises a month.
 
 ### Monthly routine
 
 1. Keep the month filled: import each day's DSR (portal: **Post Date** =
    today), or import a whole month at once (portal: **Transaction Date** =
    the month).
-2. Open **Sales report → Month**, check **Data completeness** shows no red
-   days, then use **Excel** or **Print** to share it.
+2. After the month ends, import SM's **DSR Summary** for that month.
+3. Open **Sales report → Month**, check **Data completeness** shows no red
+   days and the **Month-end check** says the month matches, then use
+   **Excel**, **View PDF** or **Print** to share it.
 
 The DSR has no cost prices, categories, stock or time of sale, so profit,
 category, inventory and hourly reports are not possible from it.

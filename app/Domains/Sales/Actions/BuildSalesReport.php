@@ -7,8 +7,8 @@ use App\Domains\Sales\Data\ReportPeriod;
 use App\Domains\Sales\Models\Article;
 use App\Domains\Sales\Models\DsrLine;
 use App\Domains\Sales\Models\Site;
-use App\Domains\Sales\Models\Vendor;
 use App\Domains\Sales\Support\SalesReportCache;
+use App\Domains\Sales\Support\SalesScope;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -61,11 +61,7 @@ class BuildSalesReport
     /** @return Builder<DsrLine> */
     private function lines(ReportPeriod $period, ReportFilter $filter): Builder
     {
-        return DsrLine::query()
-            ->whereBetween('transaction_date', [$period->start->toDateString(), $period->end->toDateString()])
-            ->when($filter->vendorCodes, fn (Builder $q, array $codes) => $q->whereIn('vendor_id', Vendor::select('id')->whereIn('code', $codes)))
-            ->when($filter->companies, fn (Builder $q, array $companies) => $q->whereIn('site_id', Site::select('id')->whereIn('company', $companies)))
-            ->when($filter->siteCodes, fn (Builder $q, array $codes) => $q->whereIn('site_id', Site::select('id')->whereIn('code', $codes)));
+        return SalesScope::apply(DsrLine::query(), $filter, $period->start, $period->end);
     }
 
     /**

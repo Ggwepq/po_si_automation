@@ -198,15 +198,24 @@ sales report. How the pieces fit:
   `whereDate` there if you must query it.
 - **Completeness:** `CheckDsrCoverage` checks store-days up to yesterday (SM
   posts DSRs the next day) and treats stores seen in the previous period as
-  expected, so a store missing for a whole month still shows up.
+  expected, so a store missing for a whole month still shows up. On days an
+  imported DSR Summary covers, a store with 0.00 or no Summary row counts as
+  "no sales", not missing.
+- **DSR Summary** (`dsr_summaries`, `ImportDsrSummaries`): SM's official
+  total per vendor, store and day. Control totals only; never add them to
+  sales. `ReconcileDsr` compares them with `SUM(dsr_lines.total_sales)` per
+  store-day, only on vendor-days the Summary covers. Filter every per-day
+  sales query through `SalesScope` so reports, coverage and the check read
+  the same rows.
 - **Money is exact:** amounts are validated as plain decimal strings and
   summed with `bcadd`; never use floats when storing sales.
 - **Reports:** `BuildSalesReport` aggregates `dsr_lines` in SQL (indexed by
   date + article and date + site). Results are cached for 10 minutes, and
   every import invalidates the cache through `SalesReportCache`.
-- **Parser formats:** only the portal's document layout and a flat table are
-  supported. When SM changes its export, add a fixture to `parse-dsr.test.ts`
-  first, then adapt the parser.
+- **Parser formats:** only the portal's document layout, a flat table, and
+  the DSR Summary (`parse-dsr-summary.ts`, recognised by its "Month Of"
+  column) are supported. When SM changes an export, add a fixture to its
+  `*.test.ts` first, then adapt the parser.
 
 ## Code standards
 

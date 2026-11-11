@@ -1,8 +1,8 @@
 import * as XLSX from 'xlsx';
 import { MB } from '@/lib/workbook-file';
 import type { DsrWorkerRequest } from './dsr-file.worker';
-import { parseDsrWorkbook } from './parse-dsr';
-import type { DsrReportInput, ParsedDsrFile } from './types';
+import { parseSalesWorkbook } from './parse-sales-file';
+import type { DsrReportInput, DsrSummaryInput, ParsedSalesFile } from './types';
 
 const MAX_FILE_MB = 50;
 
@@ -17,17 +17,17 @@ export function assertDsrFile(file: Pick<File, 'name' | 'size'>): void {
 }
 
 type WorkerResponse =
-    | { result: ParsedDsrFile; error?: undefined }
+    | { result: ParsedSalesFile; error?: undefined }
     | { error: string; result?: undefined };
 
 /** Parses a DSR export in a Web Worker, falling back to the main thread. */
-export async function readDsrFile(file: File): Promise<ParsedDsrFile> {
+export async function readDsrFile(file: File): Promise<ParsedSalesFile> {
     assertDsrFile(file);
 
     const bytes = await file.arrayBuffer();
 
     if (typeof Worker === 'undefined') {
-        return parseDsrWorkbook(XLSX.read(bytes, { type: 'array' }));
+        return parseSalesWorkbook(XLSX.read(bytes, { type: 'array' }));
     }
 
     return new Promise((resolve, reject) => {
@@ -60,18 +60,33 @@ export async function readDsrFile(file: File): Promise<ParsedDsrFile> {
     });
 }
 
-/** Splits reports into request-sized batches. */
-export function toBatches(
-    reports: DsrReportInput[],
-    perBatch: number,
-): DsrReportInput[][] {
-    const batches: DsrReportInput[][] = [];
+/** Splits rows into request-sized batches. */
+export function toBatches<T>(rows: T[], perBatch: number): T[][] {
+    const batches: T[][] = [];
 
-    for (let i = 0; i < reports.length; i += perBatch) {
-        batches.push(reports.slice(i, i + perBatch));
+    for (let i = 0; i < rows.length; i += perBatch) {
+        batches.push(rows.slice(i, i + perBatch));
     }
 
     return batches;
+}
+
+/** Totals shown before importing a DSR Summary. */
+export function summaryPreviewTotals(summaries: DsrSummaryInput[]) {
+    const dates = summaries.map((s) => s.transaction_date).sort();
+
+    return {
+        rowCount: summaries.length,
+        storeCount: new Set(summaries.map((s) => s.site_code)).size,
+        noSalesDays: summaries.filter((s) => Number(s.total_sales) === 0)
+            .length,
+        totalSales: summaries.reduce(
+            (sum, s) => sum + Number(s.total_sales),
+            0,
+        ),
+        firstDate: dates[0] ?? null,
+        lastDate: dates.at(-1) ?? null,
+    };
 }
 
 /** Totals shown in the preview before importing. */

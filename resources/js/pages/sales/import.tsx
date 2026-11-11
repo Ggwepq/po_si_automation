@@ -1,12 +1,9 @@
 import { Head } from '@inertiajs/react';
 import { DsrImport } from '@/features/sales/components/dsr-import';
-import type { ImportRecord } from '@/features/sales/components/import-history';
+import type { ComponentProps } from 'react';
 import { importMethod as importRoute } from '@/routes/sales';
 
-type Props = {
-    imports: ImportRecord[];
-    limits: { reportsPerBatch: number; linesPerReport: number };
-};
+type Props = ComponentProps<typeof DsrImport>;
 
 export default function ImportDsrPage(props: Props) {
     return (

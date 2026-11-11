@@ -1,5 +1,6 @@
 import { percentChange } from './format';
-import type { DsrCoverage, SalesReport } from './types';
+import { reconciliationSentence } from './reconciliation';
+import type { DsrCoverage, DsrReconciliation, SalesReport } from './types';
 
 export type Insight = {
     /** Short label, e.g. "Best store". */
@@ -13,6 +14,7 @@ type Options = {
     money: (value: number) => string;
     qty: (value: number) => string;
     coverage?: DsrCoverage;
+    reconciliation?: DsrReconciliation;
 };
 
 /**
@@ -117,6 +119,18 @@ export function buildInsights(
             title: 'Data check',
             text: `${coverage.daysWithoutAnyDsr.length} day${coverage.daysWithoutAnyDsr.length === 1 ? '' : 's'} in this period have no imported DSR, so totals may be understated.`,
             tone: 'warning',
+        });
+    }
+
+    const reconciliation =
+        options.reconciliation &&
+        reconciliationSentence(options.reconciliation, money);
+
+    if (options.reconciliation && reconciliation) {
+        insights.push({
+            title: 'Month-end check',
+            text: reconciliation,
+            tone: options.reconciliation.balanced ? 'positive' : 'warning',
         });
     }
 

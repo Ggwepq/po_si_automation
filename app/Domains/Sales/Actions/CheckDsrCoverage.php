@@ -5,26 +5,29 @@ namespace App\Domains\Sales\Actions;
 use App\Domains\Sales\Data\ReportFilter;
 use App\Domains\Sales\Data\ReportPeriod;
 use App\Domains\Sales\Models\DsrLine;
+use App\Domains\Sales\Models\DsrSummary;
 use App\Domains\Sales\Models\Site;
-use App\Domains\Sales\Models\Vendor;
 use App\Domains\Sales\Support\SalesReportCache;
+use App\Domains\Sales\Support\SalesScope;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
 /**
  * Shows which store-days of a period have an imported DSR, so a missed
  * import is visible before the report is trusted.
  *
- * A store is expected when it has DSRs in this period or the one before, so
- * a store missing for the whole month still appears. Only days up to
- * yesterday are checked: SM posts a day's DSR the next day. It reads
- * dsr_lines (indexed by date + site; every DSR has lines) rather than
- * dsr_reports. A day without any DSR from any store almost always means the
- * import for that day was skipped. A single store without a DSR may simply
- * have had no sales (SM only issues a DSR when something sold).
+ * A store is expected when it has DSRs in this period or the one before (or
+ * appears in SM's DSR Summary), so a store missing for the whole month still
+ * appears. Only days up to yesterday are checked: SM posts a day's DSR the
+ * next day. A store-day counts as accounted for when its DSR is imported or
+ * when SM's DSR Summary for that day shows 0.00 or omits the store (no
+ * sales, so SM issues no DSR).
+ * Reads dsr_lines (indexed by date + site; every DSR has lines) rather than
+ * dsr_reports.
  *
- * @phpstan-type StoreCoverage array{code: string, name: string, company: string, importedDays: int, missing: list<string>, months: list<array{month: string, imported: int, days: int}>}
+ * @phpstan-type StoreCoverage array{code: string, name: string, company: string, importedDays: int, noSalesDays: int, noSales: list<string>, missing: list<string>, months: list<array{month: string, imported: int, days: int}>}
  */
 class CheckDsrCoverage
 {
@@ -56,36 +59,44 @@ class CheckDsrCoverage
             return ['mode' => 'day', 'days' => [], 'daysWithoutAnyDsr' => [], 'stores' => [], 'complete' => true];
         }
 
-        $imported = $this->storeDays($filter, $period->start, $last)
-            ->toBase()
-            ->select('site_id', 'transaction_date')
-            ->distinct()
-            ->get()
-            ->groupBy('site_id')
-            ->map(fn (Collection $rows) => $rows
-                ->map(fn ($row) => CarbonImmutable::parse($row->transaction_date)->toDateString())
-                ->unique()
-                ->values());
+        $imported = $this->datesBySite(SalesScope::apply(DsrLine::query(), $filter, $period->start, $last));
+        $summaries = fn () => SalesScope::apply(DsrSummary::query(), $filter, $period->start, $last);
+        $summaryDays = $summaries()->distinct()->pluck('transaction_date')
+            ->map(fn ($date) => CarbonImmutable::parse($date)->toDateString());
+        $summarySalesDays = $this->datesBySite($summaries()->where('total_sales', '<>', 0));
 
         $previous = $period->previous();
-        $expectedIds = $this->storeDays($filter, $previous->start, $last)->distinct()->pluck('site_id');
+        $expectedIds = SalesScope::apply(DsrLine::query(), $filter, $previous->start, $last)->distinct()->pluck('site_id')
+            ->merge(SalesScope::apply(DsrSummary::query(), $filter, $period->start, $last)->distinct()->pluck('site_id'))
+            ->unique();
         $sites = Site::whereIn('id', $expectedIds)->orderBy('company')->orderBy('name')->get();
 
-        $daysWithDsr = $imported->flatten()->unique();
-        $daysWithoutAnyDsr = array_values(array_filter($days, fn (string $day) => ! $daysWithDsr->contains($day)));
+        // A day with no DSR at all is only expected when SM shows no sales.
+        $accountedDays = $imported->flatten()
+            ->merge($summaryDays->diff($summarySalesDays->flatten()))
+            ->unique();
+        $daysWithoutAnyDsr = array_values(array_filter($days, fn (string $day) => ! $accountedDays->contains($day)));
 
-        $stores = $sites->map(function (Site $site) use ($imported, $days, $byMonth) {
-            /** @var Collection<int, string> $dates */
-            $dates = $imported->get($site->id, collect());
-            $missing = array_values(array_diff($days, $dates->all()));
+        $stores = $sites->map(function (Site $site) use ($imported, $summaryDays, $summarySalesDays, $days, $byMonth) {
+            /** @var Collection<int, string> $dsrDates */
+            $dsrDates = $imported->get($site->id, collect());
+            // On a day SM's Summary covers, a store with 0.00 or no row
+            // at all sold nothing, so a missing DSR is expected.
+            $zeroDates = $summaryDays
+                ->diff($summarySalesDays->get($site->id, collect()))
+                ->diff($dsrDates)
+                ->values();
+            $accounted = $dsrDates->merge($zeroDates);
 
             return [
                 'code' => $site->code,
                 'name' => $site->name,
                 'company' => $site->company,
-                'importedDays' => $dates->count(),
-                'missing' => $byMonth ? [] : $missing,
-                'months' => $byMonth ? $this->monthly($days, $dates) : [],
+                'importedDays' => $dsrDates->count(),
+                'noSalesDays' => $zeroDates->count(),
+                'noSales' => $byMonth ? [] : $zeroDates->sort()->values()->all(),
+                'missing' => $byMonth ? [] : array_values(array_diff($days, $accounted->all())),
+                'months' => $byMonth ? $this->monthly($days, $accounted) : [],
             ];
         })->values()->all();
 
@@ -95,18 +106,27 @@ class CheckDsrCoverage
             'daysChecked' => count($days),
             'daysWithoutAnyDsr' => $daysWithoutAnyDsr,
             'stores' => $stores,
-            'complete' => collect($stores)->every(fn (array $s) => $s['importedDays'] === count($days)),
+            'complete' => collect($stores)->every(fn (array $s) => count($days) === $s['importedDays'] + $s['noSalesDays']),
         ];
     }
 
-    /** @return Builder<DsrLine> */
-    private function storeDays(ReportFilter $filter, CarbonImmutable $from, CarbonImmutable $to): Builder
+    /**
+     * @template TModel of Model
+     *
+     * @param  Builder<TModel>  $query
+     * @return Collection<int, Collection<int, string>> dates by site id
+     */
+    private function datesBySite(Builder $query): Collection
     {
-        return DsrLine::query()
-            ->whereBetween('transaction_date', [$from->toDateString(), $to->toDateString()])
-            ->when($filter->vendorCodes, fn (Builder $q, array $codes) => $q->whereIn('vendor_id', Vendor::select('id')->whereIn('code', $codes)))
-            ->when($filter->companies, fn (Builder $q, array $companies) => $q->whereIn('site_id', Site::select('id')->whereIn('company', $companies)))
-            ->when($filter->siteCodes, fn (Builder $q, array $codes) => $q->whereIn('site_id', Site::select('id')->whereIn('code', $codes)));
+        return $query->toBase()
+            ->select('site_id', 'transaction_date')
+            ->distinct()
+            ->get()
+            ->groupBy('site_id')
+            ->map(fn (Collection $rows) => $rows
+                ->map(fn ($row) => CarbonImmutable::parse($row->transaction_date)->toDateString())
+                ->unique()
+                ->values());
     }
 
     /** @return list<string> */

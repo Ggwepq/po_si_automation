@@ -1,22 +1,15 @@
-import { usePage } from '@inertiajs/react';
-import { BrandMark, COMPANY_NAME } from '@/components/brand-logo';
+import { BrandLogo, BrandMark } from '@/components/brand-logo';
 
+/**
+ * Sidebar logo: the full Park Solutions logo, or just the pin when the
+ * sidebar is collapsed to icons. The white tile keeps the logo's blue
+ * lettering readable in dark mode.
+ */
 export default function AppLogo() {
-    const { name } = usePage().props;
-
     return (
-        <>
-            <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-md bg-white shadow-sm">
-                <BrandMark />
-            </div>
-            <div className="ml-1 grid flex-1 text-left text-sm">
-                <span className="truncate leading-tight font-semibold">
-                    {name}
-                </span>
-                <span className="truncate text-xs text-sidebar-foreground/70">
-                    {COMPANY_NAME}
-                </span>
-            </div>
-        </>
+        <div className="flex items-center justify-center rounded-lg bg-white p-2 shadow-sm group-data-[collapsible=icon]:p-1">
+            <BrandLogo className="h-14 w-auto group-data-[collapsible=icon]:hidden" />
+            <BrandMark className="hidden size-6 group-data-[collapsible=icon]:block" />
+        </div>
     );
 }

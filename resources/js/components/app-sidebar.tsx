@@ -7,9 +7,6 @@ import {
     SidebarContent,
     SidebarFooter,
     SidebarHeader,
-    SidebarMenu,
-    SidebarMenuButton,
-    SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { mainNavItems } from '@/features/workflows';
 import { dashboard } from '@/routes';
@@ -18,15 +15,14 @@ export function AppSidebar() {
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
-                <SidebarMenu>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton size="lg" asChild>
-                            <Link href={dashboard()} prefetch>
-                                <AppLogo />
-                            </Link>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                </SidebarMenu>
+                <Link
+                    href={dashboard()}
+                    prefetch
+                    aria-label="Go to dashboard"
+                    className="rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+                >
+                    <AppLogo />
+                </Link>
             </SidebarHeader>
 
             <SidebarContent>

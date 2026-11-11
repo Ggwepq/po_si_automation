@@ -1,11 +1,11 @@
-import { FileCheck2, LayoutGrid, ListChecks } from 'lucide-react';
+import { FileCheck2, LayoutGrid, ListChecks, Workflow } from 'lucide-react';
 import { dashboard, poMatching, raMatching } from '@/routes';
-import type { NavItem } from '@/types';
+import type { NavEntry, NavItem } from '@/types';
 
-export type Workflow = NavItem & { description: string };
+export type AutomationTool = NavItem & { description: string };
 
 /** Workbook tools, listed once for the sidebar and the dashboard. */
-export const workflows: Workflow[] = [
+export const workflows: AutomationTool[] = [
     {
         title: 'PO & SI workflow',
         href: poMatching(),
@@ -22,7 +22,7 @@ export const workflows: Workflow[] = [
     },
 ];
 
-export const mainNavItems: NavItem[] = [
+export const mainNavItems: NavEntry[] = [
     { title: 'Dashboard', href: dashboard(), icon: LayoutGrid },
-    ...workflows,
+    { title: 'Automate', icon: Workflow, items: workflows },
 ];

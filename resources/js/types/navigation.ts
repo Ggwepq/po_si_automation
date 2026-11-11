@@ -12,3 +12,12 @@ export type NavItem = {
     icon?: LucideIcon | null;
     isActive?: boolean;
 };
+
+/** A sidebar entry that expands to show related pages. */
+export type NavGroup = {
+    title: string;
+    icon?: LucideIcon | null;
+    items: NavItem[];
+};
+
+export type NavEntry = NavItem | NavGroup;

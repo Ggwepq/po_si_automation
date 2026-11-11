@@ -1,8 +1,9 @@
-# PAUS Workflow
+# Sales Management System
 
-Internal web app for automating PO/GR and RA/ICR spreadsheet work, built to
-grow into a sales management system. Laravel 13 + React 19 (Inertia,
-TypeScript) on MySQL.
+Internal sales management system for the team. It currently automates PO/GR
+and RA/ICR spreadsheet work; a sales dashboard fed by the SM Vendor Portal's
+Daily Sales Report is next. Laravel 13 + React 19 (Inertia, TypeScript) on
+MySQL.
 
 Contributor and AI-agent rules: [AGENTS.md](AGENTS.md).
 
@@ -18,7 +19,7 @@ cp .env.example .env
 php artisan key:generate
 ```
 
-Create an empty database named `paus_db` (utf8mb4), set the `DB_*` values in
+Create an empty database named `sales_management` (utf8mb4), set the `DB_*` values in
 `.env`, then:
 
 ```bash

@@ -6,7 +6,7 @@ same pull request and explain why.
 
 ## What this is
 
-**PAUS Workflow**: an internal web app for a small team (3–4 accounts, one
+**Sales Management System**: an internal web app for a small team (3–4 accounts, one
 shared role) that automates spreadsheet work and will grow into a sales
 management system fed by the SM Vendor Portal's Daily Sales Report (DSR).
 

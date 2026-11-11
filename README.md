@@ -104,8 +104,11 @@ cleared by **Start over** or a page reload.
 ### Import DSR
 
 1. In the SM Vendor Portal, open **Finance Documents → Daily Sales Report**,
-   filter the dates you need, and export the documents (.xlsx, .xls or .csv).
-2. In the app, go to **Sales → Import DSR** and choose the file.
+   filter the dates you need, select the reports, and click **Export
+   Document** (the file is usually named `DSR_DETAIL.xlsx`). **Export List**
+   (`DSR_LIST.xlsx`) only has totals per store, so the app rejects it.
+2. In the app, go to **Sales → Import DSR** and choose the file. The app checks
+   that the item lines add up to the file's Grand Total and warns if not.
 3. Check the preview (dates, stores, item lines, total sales), then click
    **Import**.
 

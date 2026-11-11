@@ -3,16 +3,19 @@ import { cellText } from '@/lib/workbook-file';
 import type { DsrLineInput, DsrReportInput, ParsedDsrFile } from './types';
 
 /*
- * Reads DSR exports from the SM Vendor Portal. Two layouts are supported:
+ * Reads DSR exports from the SM Vendor Portal.
  *
- * 1. Document layout (as shown on the portal's DSR detail page): label/value
- *    cells such as "Site Code & Name | [1230] SVI AURA PREMIER" and
- *    "Transaction Date | 11/10/2026", followed by an item table. A sheet may
- *    hold several documents one after another.
- * 2. Flat layout: one table where every row carries its own site and date
- *    columns next to the item columns.
+ * 1. Flat layout, the portal's "Export Document" (DSR_DETAIL.xlsx): one table
+ *    where every item row carries Site Code, Site Name and Transaction Date,
+ *    ending with a "Grand Total" row. Values are text such as "1,146.38".
+ * 2. Document layout, as on the portal's DSR detail page: label/value cells
+ *    such as "Site Code & Name | [1230] SVI AURA PREMIER" above an item table.
+ *    A sheet may hold several documents one after another.
  *
- * Headers are matched by name, not position, so column order may vary.
+ * The portal's "Export List" (DSR_LIST.xlsx) has totals only and is rejected
+ * with a hint to use Export Document. Headers are matched by name, not
+ * position, so column order may vary. Each table's sum is checked against the
+ * file's own "Grand Total" row.
  */
 
 const key = (value: unknown) =>
@@ -143,10 +146,21 @@ function labelValue(
     return right ?? rows[rowIndex + 1]?.[index];
 }
 
+const toCents = (decimal: string) => Math.round(Number(decimal) * 100);
+
+const formatCents = (cents: number) => (cents / 100).toFixed(2);
+
+/** The portal's "Export List": one totals row per store-day, without items. */
+const isListHeader = (row: unknown[], map: ColumnMap) =>
+    map.articleCode === undefined &&
+    map.siteCode !== undefined &&
+    row.some((cell) => key(cell) === 'articlecount');
+
 export function parseDsrWorkbook(workbook: XLSX.WorkBook): ParsedDsrFile {
     const reports = new Map<string, DsrReportInput & { block: number }>();
     const warnings: string[] = [];
     let block = 0;
+    let sawListExport = false;
 
     for (const sheetName of workbook.SheetNames) {
         const rows = XLSX.utils.sheet_to_json<unknown[]>(
@@ -162,6 +176,9 @@ export function parseDsrWorkbook(workbook: XLSX.WorkBook): ParsedDsrFile {
         let date: string | null = null;
         let status: string | null = null;
         let table: ColumnMap | null = null;
+        // Sales read from the current item table, in centavos, to check
+        // against the file's own "Grand Total" row.
+        let tableCents = 0;
 
         for (let rowIndex = 0; rowIndex < rows.length; rowIndex++) {
             const row = rows[rowIndex];
@@ -169,18 +186,32 @@ export function parseDsrWorkbook(workbook: XLSX.WorkBook): ParsedDsrFile {
 
             if (isItemHeader(map)) {
                 table = map;
+                tableCents = 0;
                 block++;
                 continue;
             }
 
+            sawListExport ||= isListHeader(row, map);
+
             if (table) {
                 const articleCode = cellText(row[table.articleCode ?? -1]);
+                const isTotalRow = /total/i.test(row.map(cellText).join(' '));
 
                 // A blank or total row ends the item table.
-                if (
-                    !articleCode ||
-                    /total/i.test(row.map(cellText).join(' '))
-                ) {
+                if (!articleCode || isTotalRow) {
+                    const fileTotal = isTotalRow
+                        ? parseDecimal(row[table.total ?? -1])
+                        : null;
+
+                    if (
+                        fileTotal !== null &&
+                        Math.abs(toCents(fileTotal) - tableCents) > 1
+                    ) {
+                        warnings.push(
+                            `${sheetName} row ${rowIndex + 1}: the file's total (${formatCents(toCents(fileTotal))}) differs from its item lines (${formatCents(tableCents)}). Check that the export is complete.`,
+                        );
+                    }
+
                     table = null;
                 } else {
                     const line = toLine(row, table, articleCode);
@@ -207,6 +238,7 @@ export function parseDsrWorkbook(workbook: XLSX.WorkBook): ParsedDsrFile {
                             `${where}: skipped, store or transaction date is missing.`,
                         );
                     } else {
+                        tableCents += toCents(line.total_sales);
                         addLine(reports, warnings, block, {
                             site: rowSite,
                             date: rowDate,
@@ -247,6 +279,12 @@ export function parseDsrWorkbook(workbook: XLSX.WorkBook): ParsedDsrFile {
                 }
             });
         }
+    }
+
+    if (!reports.size && sawListExport) {
+        throw new Error(
+            'This is the DSR list export, which only has totals per store. In the vendor portal, select the reports and use "Export Document" instead, which includes the items sold.',
+        );
     }
 
     if (!reports.size) {

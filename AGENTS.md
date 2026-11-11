@@ -4,6 +4,77 @@ Rules for anyone changing this codebase: developers and AI coding agents alike.
 Follow them in every change. If a rule blocks you, change the rule here in the
 same pull request and explain why.
 
+## Quality bar for every change
+
+This system is meant to last for years. Every change, however small, must keep
+or improve all five qualities below. If a change trades one away (for example,
+a faster query that is harder to maintain), say so in the pull request and
+explain why it is worth it. Before finishing, check each item.
+
+### 1. Performance stays stable
+
+- Do not make existing pages or actions slower. Measure before and after when
+  touching hot paths (imports, dashboards, matching, exports).
+- Database: no queries inside loops (eager-load with `with()`), select only
+  needed columns, paginate lists, and index every column used to filter, join
+  or sort. Aggregate large data (e.g. daily sales) in SQL or summary tables,
+  not in PHP or the browser.
+- Heavy or slow work (imports, syncs, large exports) runs in queued jobs, not
+  during the web request.
+- Frontend: keep heavy libraries out of the shared bundle (load them only on
+  the pages that need them), avoid unnecessary re-renders, and keep large files
+  in Web Workers. A production build must show no new chunk-size warnings.
+- Cache data that is expensive to compute and rarely changes, with a clear
+  expiry or invalidation.
+
+### 2. Easy to maintain
+
+- Follow the Architecture rules below: thin controllers, Actions, Form
+  Requests, feature folders, shared code instead of copies.
+- Small, focused files and functions with business names. Comments explain
+  why, not what.
+- No dead code, unused dependencies, or commented-out code left behind.
+- Update README.md and this file in the same change when setup, behavior or
+  rules change.
+
+### 3. Scales with growth
+
+- Design for 10× today's data and users: daily sales will grow every day, so
+  assume tables with millions of rows.
+- Keep the code host-independent: no Hostinger-specific paths or assumptions in
+  application code (use `.env`/`config()`), so the app can move to a VPS or
+  another host without a rewrite.
+- New features go in their own domain/feature folder so they can grow without
+  tangling with others.
+- Prefer stable, widely used, well-maintained packages; add a dependency only
+  when it clearly beats writing a small amount of code.
+
+### 4. Reliable
+
+- Every change has tests that would fail if it broke; `composer ci:check`
+  passes before merging.
+- Validate inputs and handle failures explicitly: show users a clear message,
+  log the technical detail, never fail silently.
+- Data changes are safe: migrations are reversible where possible, imports are
+  idempotent (re-running one does not duplicate data), and multi-step writes
+  use database transactions.
+- Do not break existing behavior or data. If a change alters behavior, document
+  it and migrate existing data.
+- Nothing reaches `master` without passing CI on `dev` first.
+
+### 5. Secure
+
+- Follow the Security section below for every change.
+- Treat all input (forms, uploads, portal data, URLs) as untrusted: validate
+  it, and never build SQL, shell commands or HTML from it directly.
+- Every new route requires `auth` + `verified` unless it is deliberately
+  public, and that decision is noted in the pull request.
+- Never log or display passwords, tokens or personal data. Never commit
+  secrets.
+- Prefer the framework's built-in protections (CSRF, hashing, encryption,
+  rate limiting) over custom code. Run `composer audit` and `npm audit` when
+  adding or updating dependencies.
+
 ## What this is
 
 **Sales Management System**: an internal web app for a small team (3–4 accounts, one

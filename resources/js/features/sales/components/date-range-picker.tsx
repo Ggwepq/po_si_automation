@@ -107,10 +107,16 @@ export function DateRangePicker({ period, salesDates, onChange }: Props) {
                         <ChevronDown className="size-4 opacity-60" />
                     </Button>
                 </PopoverTrigger>
-                <PopoverContent align="start" className="w-auto p-0">
-                    <div className="flex flex-col sm:flex-row">
+                <PopoverContent
+                    align="start"
+                    collisionPadding={12}
+                    className="w-auto max-w-[calc(100vw-24px)] p-0"
+                >
+                    <div className="flex flex-col sm:flex-row sm:items-start">
+                        {/* content-start: keep the list packed at the top instead of
+                            stretching to the calendar's height. */}
                         <ul
-                            className="grid grid-cols-2 gap-0.5 border-b p-2 sm:w-44 sm:grid-cols-1 sm:border-r sm:border-b-0"
+                            className="grid grid-cols-2 content-start gap-0.5 border-b p-2 sm:w-40 sm:grid-cols-1 sm:self-stretch sm:border-r sm:border-b-0"
                             aria-label="Quick ranges"
                         >
                             {choices.map((choice) => {
@@ -124,7 +130,7 @@ export function DateRangePicker({ period, salesDates, onChange }: Props) {
                                         <button
                                             type="button"
                                             className={cn(
-                                                'w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent',
+                                                'w-full rounded-md px-2 py-1 text-left text-sm whitespace-nowrap hover:bg-accent',
                                                 active &&
                                                     'bg-accent font-medium text-accent-foreground',
                                             )}
@@ -143,9 +149,9 @@ export function DateRangePicker({ period, salesDates, onChange }: Props) {
                             })}
                         </ul>
 
-                        <div className="grid gap-3 p-3">
+                        <div className="grid content-start gap-3 p-3">
                             <div
-                                className="flex flex-wrap gap-1"
+                                className="flex flex-wrap gap-1 rounded-lg bg-muted p-1"
                                 role="tablist"
                                 aria-label="View by"
                             >
@@ -156,10 +162,10 @@ export function DateRangePicker({ period, salesDates, onChange }: Props) {
                                         role="tab"
                                         aria-selected={view === value}
                                         className={cn(
-                                            'rounded-md px-2.5 py-1 text-xs font-medium hover:bg-accent',
+                                            'flex-1 rounded-md px-2.5 py-1 text-xs font-medium',
                                             view === value
-                                                ? 'bg-primary text-primary-foreground hover:bg-primary'
-                                                : 'text-muted-foreground',
+                                                ? 'bg-background text-foreground shadow-sm'
+                                                : 'text-muted-foreground hover:text-foreground',
                                         )}
                                         onClick={() => {
                                             setView(value);

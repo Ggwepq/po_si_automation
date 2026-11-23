@@ -18,7 +18,7 @@ export function BrandLogo({ className }: { className?: string }) {
 export function BrandMark({ className }: { className?: string }) {
     return (
         <img
-            src="/favicon.png"
+            src="/favicon.png?v=2"
             alt=""
             aria-hidden
             className={cn('size-6 object-contain', className)}

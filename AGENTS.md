@@ -4,6 +4,72 @@ Rules for anyone changing this codebase: developers and AI coding agents alike.
 Follow them in every change. If a rule blocks you, change the rule here in the
 same pull request and explain why.
 
+Project-specific commands and thresholds are defined in
+[QUALITY_GATES.md](QUALITY_GATES.md).
+
+## Engineering workflow
+
+### Before changing code
+
+1. Read this file, [README.md](README.md), [QUALITY_GATES.md](QUALITY_GATES.md),
+   and any relevant domain/feature docs.
+2. Inspect the relevant folders, files, tests, and `git status`. Preserve all
+   existing and in-progress changes.
+3. Explain the workflow you plan to change: what the user does, what the system
+   records, who may correct or approve it, and how errors recover.
+4. If a requirement is unclear or has meaningful security, data, or workflow
+   consequences, ask before deciding. Otherwise, follow the established product
+   rules.
+
+### While changing code
+
+- **Organize by feature and responsibility:** before adding code to an existing
+  file, decide whether it belongs there. Put a distinct substantial component,
+  hook, action, service, or domain workflow in a clearly named file. Keep
+  small, tightly related helpers together when that is easier to understand.
+- **Avoid bloat and needless splits:** do not split every function into its own
+  file or use arbitrary line-count targets. Avoid catch-all files, duplicate
+  logic, needless abstractions, and broad folder moves.
+- **Keep layers clear:** UI handles presentation, controllers handle request
+  validation and responses, business actions own workflows, and domain
+  calculations remain independent of the database and UI.
+- **Reuse before duplicating:** reuse existing components and helpers when
+  appropriate; extract shared code only when the same responsibility genuinely
+  repeats.
+- **Preserve stability:** preserve existing behavior, data, API compatibility,
+  permissions, audit history, and recovery paths unless a change is explicitly
+  requested.
+- **Authorization and isolation:** enforce authorization and tenant or company
+  isolation on every relevant read and write. Fail closed when access context
+  is missing.
+- **Safe retries and concurrency:** handle retries, offline work, background
+  jobs, and repeated requests safely. Prevent duplicate effects and make
+  failures visible and recoverable.
+- **Bound work and measure scale:** keep lists, queries, uploads, and jobs
+  bounded. Consider expected data growth and production load; do not claim
+  scalability is proven without representative measurements.
+- **Accessible, novice-friendly UI:** design clear interfaces with obvious next
+  steps, useful status labels, visible errors, and recovery actions.
+
+### Before calling work complete
+
+1. Review the final diff for unrelated changes, duplicated logic, misplaced
+   files, secrets, and compatibility risks.
+2. Run the relevant project checks and focused tests (see
+   [QUALITY_GATES.md](QUALITY_GATES.md)). Do not weaken or remove checks to make
+   them pass.
+3. Review changed screens or workflows in the running application when
+   applicable, and report the device, viewport, and any unverified cases.
+4. Verify normal use, an exception path, and retry or correction behavior where
+   applicable.
+5. Update requirements, architecture notes, and decision records (`README.md`,
+   `AGENTS.md`, `QUALITY_GATES.md`) when behavior or technical boundaries
+   change.
+6. Report what changed, why, files or folders reorganized, checks and results,
+   deployment or migration steps, and remaining risks or unverified work.
+7. Do not commit, push, deploy, publish, delete user data, or make irreversible
+   changes unless explicitly instructed.
+
 ## Quality bar for every change
 
 This system is meant to last for years. Every change, however small, must keep

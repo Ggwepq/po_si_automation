@@ -1,23 +1,14 @@
 import type { jsPDF } from 'jspdf';
 import type { Slice } from './format';
+import { PIE_COLORS, layoutPieCallouts } from './pie-callouts';
 
 /*
- * Pie (donut) charts drawn directly with jsPDF shapes: vector-sharp at any
- * zoom, small, and independent of the screen theme (print colours on white).
+ * Pie charts with leader-line callouts drawn directly with jsPDF shapes:
+ * vector-sharp at any zoom, small, and independent of the screen theme.
  * Sizes are in millimetres.
  */
 
-/** Print versions of the theme's pastel chart colours; "Others" is grey. */
-export const PDF_COLORS = [
-    '#3f51b5',
-    '#e8b931',
-    '#7f9be0',
-    '#4fae8a',
-    '#e3896a',
-    '#9a7bd0',
-    '#5fb4d3',
-];
-const OTHERS = '#c9ccd6';
+export const PDF_COLORS = PIE_COLORS;
 export const INK = '#1f2747';
 export const MUTED = '#6b7190';
 
@@ -29,9 +20,6 @@ export const pdfMoney = (value: number) =>
 
 export const pdfQty = (value: number) =>
     value.toLocaleString('en-PH', { maximumFractionDigits: 3 });
-
-const sliceColor = (slice: Slice, index: number) =>
-    slice.name === 'Others' ? OTHERS : PDF_COLORS[index % PDF_COLORS.length];
 
 /** Fits text into a width, adding "..." when it is cut. */
 export function fit(doc: jsPDF, text: string, width: number): string {
@@ -48,30 +36,25 @@ export function fit(doc: jsPDF, text: string, width: number): string {
     return `${cut}...`;
 }
 
-/** A filled ring segment, approximated by short straight edges. */
-function ringSegment(
+/** A filled pie sector from the centre, with a white divider border. */
+function pieSector(
     doc: jsPDF,
     cx: number,
     cy: number,
-    outer: number,
-    inner: number,
+    radius: number,
     from: number,
     to: number,
 ) {
     const step = Math.PI / 90;
-    const points: [number, number][] = [];
+    const sweep = to - from;
+    const points: [number, number][] =
+        sweep >= Math.PI * 2 - 1e-4 ? [] : [[cx, cy]];
 
     for (let a = from; a < to; a += step) {
-        points.push([cx + outer * Math.cos(a), cy + outer * Math.sin(a)]);
+        points.push([cx + radius * Math.cos(a), cy + radius * Math.sin(a)]);
     }
 
-    points.push([cx + outer * Math.cos(to), cy + outer * Math.sin(to)]);
-
-    for (let a = to; a > from; a -= step) {
-        points.push([cx + inner * Math.cos(a), cy + inner * Math.sin(a)]);
-    }
-
-    points.push([cx + inner * Math.cos(from), cy + inner * Math.sin(from)]);
+    points.push([cx + radius * Math.cos(to), cy + radius * Math.sin(to)]);
 
     const [start, ...rest] = points;
     const deltas = rest.map(([x, y], i) => [
@@ -79,7 +62,8 @@ function ringSegment(
         y - (i === 0 ? start[1] : rest[i - 1][1]),
     ]);
 
-    doc.lines(deltas, start[0], start[1], [1, 1], 'F', true);
+    doc.setDrawColor('#ffffff').setLineWidth(0.35);
+    doc.lines(deltas, start[0], start[1], [1, 1], 'FD', true);
 }
 
 export type DonutOptions = {
@@ -87,11 +71,15 @@ export type DonutOptions = {
     /** Amount column in the legend; off for narrow, half-width charts. */
     showAmount?: boolean;
     format?: (value: number) => string;
-    /** Short text in the hole, e.g. the total. */
+    /** Optional centre caption summary (rendered in the legend header if present). */
     centre?: { value: string; label: string };
 };
 
-/** Donut chart with a legend (name, share, amount) to its right. */
+/**
+ * Solid pie chart with leader-line callouts (white-ringed dot inside each
+ * slice -> angled segment -> horizontal line -> value & share) and a colour
+ * legend for the slice names.
+ */
 export function donutWithLegend(
     doc: jsPDF,
     slices: Slice[],
@@ -100,16 +88,26 @@ export function donutWithLegend(
     width: number,
     options: DonutOptions = {},
 ): number {
-    const {
-        radius = 17,
-        showAmount = true,
-        format = pdfMoney,
-        centre,
-    } = options;
-    const cx = x + radius;
-    const cy = y + radius;
+    const { radius = 15, format = pdfMoney } = options;
+    const wide = width > 120;
+    const r = Math.min(radius, wide ? 17 : 12);
+    const colOffset = r + (wide ? 11 : 6.5);
+    const pieAreaWidth = wide ? Math.min(width * 0.56, 98) : width;
+    const cx = x + pieAreaWidth / 2;
+    const padTop = 4;
+    const cy = y + padTop + r;
+    const callouts = layoutPieCallouts(slices, {
+        cx,
+        cy,
+        radius: r,
+        columnOffset: colOffset,
+        minGap: 5.2,
+        minY: y + 2.5,
+        maxY: cy + r + 3,
+        elbowOffset: r * 0.2,
+    });
 
-    if (!slices.length) {
+    if (!callouts.length) {
         doc.setFontSize(8)
             .setTextColor(MUTED)
             .text('No sales in this period.', x, y + 6);
@@ -117,80 +115,91 @@ export function donutWithLegend(
         return y + 10;
     }
 
-    const total = slices.reduce((sum, s) => sum + Math.max(0, s.value), 0) || 1;
-    let angle = -Math.PI / 2;
-
-    slices.forEach((slice, index) => {
-        const sweep = (Math.max(0, slice.value) / total) * Math.PI * 2;
-
-        if (sweep > 0.001) {
-            doc.setFillColor(sliceColor(slice, index));
-            ringSegment(
-                doc,
-                cx,
-                cy,
-                radius,
-                radius * 0.6,
-                angle,
-                angle + sweep,
-            );
+    callouts.forEach((c) => {
+        if (c.endAngle - c.startAngle > 0.001) {
+            doc.setFillColor(c.color);
+            pieSector(doc, cx, cy, r, c.startAngle, c.endAngle);
         }
-
-        angle += sweep;
     });
 
-    if (centre) {
+    callouts.forEach((c) => {
+        const isRight = c.side === 'right';
+        const textX = c.labelX + (isRight ? 1.1 : -1.1);
+        const align = isRight ? 'left' : 'right';
+
+        doc.setDrawColor(INK).setLineWidth(0.28);
+        doc.line(c.anchorX, c.anchorY, c.elbowX, c.elbowY);
+        doc.line(c.elbowX, c.elbowY, c.labelX, c.labelY);
+
+        doc.setFillColor(INK)
+            .setDrawColor('#ffffff')
+            .setLineWidth(0.32)
+            .circle(c.anchorX, c.anchorY, 0.72, 'FD');
+
         doc.setFont('helvetica', 'bold')
-            .setFontSize(radius > 18 ? 9 : 7.5)
+            .setFontSize(6.5)
             .setTextColor(INK)
-            .text(centre.value, cx, cy + 0.5, { align: 'center' });
+            .text(format(c.slice.value), textX, c.labelY - 0.3, { align });
         doc.setFont('helvetica', 'normal')
-            .setFontSize(6)
+            .setFontSize(5.8)
             .setTextColor(MUTED)
-            .text(centre.label, cx, cy + 3.8, { align: 'center' });
+            .text(`${c.slice.share.toFixed(1)}%`, textX, c.labelY + 2.1, {
+                align,
+            });
+    });
+
+    const chartBottom = Math.max(
+        cy + r + 2,
+        ...callouts.map((c) => c.labelY + 3),
+    );
+
+    if (wide) {
+        const legendX = x + pieAreaWidth + 4;
+        const legendWidth = width - pieAreaWidth - 4;
+        const rowHeight = 4.8;
+        let rowY = cy - ((callouts.length - 1) * rowHeight) / 2 + 1;
+
+        doc.setFont('helvetica', 'normal').setFontSize(7.2);
+        callouts.forEach((c) => {
+            doc.setFillColor(c.color).circle(
+                legendX + 1.1,
+                rowY - 0.9,
+                1.1,
+                'F',
+            );
+            doc.setTextColor(INK).text(
+                fit(doc, c.slice.name, legendWidth - 5),
+                legendX + 3.8,
+                rowY,
+            );
+            rowY += rowHeight;
+        });
+
+        return Math.max(chartBottom, rowY) + 2;
     }
 
-    const legendX = x + radius * 2 + 6;
-    const legendWidth = width - radius * 2 - 6;
-    const rowHeight = 5.2;
-    let rowY = cy - ((slices.length - 1) * rowHeight) / 2 + 1;
+    // Half-width chart: compact two-column legend below the pie & callouts.
+    const colWidth = (width - 4) / 2;
+    const rowHeight = 4.2;
+    let legendBottom = chartBottom + 2;
 
-    doc.setFont('helvetica', 'normal').setFontSize(7.5);
+    doc.setFont('helvetica', 'normal').setFontSize(6.6);
+    callouts.forEach((c, idx) => {
+        const col = idx % 2;
+        const row = Math.floor(idx / 2);
+        const lx = x + col * (colWidth + 4);
+        const ly = chartBottom + 3 + row * rowHeight;
 
-    slices.forEach((slice, index) => {
-        doc.setFillColor(sliceColor(slice, index)).circle(
-            legendX + 1.2,
-            rowY - 1,
-            1.2,
-            'F',
-        );
-        const amount = showAmount ? format(slice.value) : '';
-        const share = `${slice.share.toFixed(1)}%`;
-        const amountWidth = showAmount ? doc.getTextWidth(amount) + 3 : 0;
-
-        doc.setTextColor(INK).setFont('helvetica', 'bold');
-        doc.text(share, legendX + legendWidth - amountWidth, rowY, {
-            align: 'right',
-        });
-        doc.setFont('helvetica', 'normal');
-
-        if (showAmount) {
-            doc.setTextColor(MUTED).text(amount, legendX + legendWidth, rowY, {
-                align: 'right',
-            });
-        }
-
-        const nameWidth =
-            legendWidth - amountWidth - doc.getTextWidth(share) - 8;
+        doc.setFillColor(c.color).circle(lx + 1, ly - 0.8, 0.95, 'F');
         doc.setTextColor(INK).text(
-            fit(doc, slice.name, nameWidth),
-            legendX + 4,
-            rowY,
+            fit(doc, c.slice.name, colWidth - 4),
+            lx + 3.2,
+            ly,
         );
-        rowY += rowHeight;
+        legendBottom = Math.max(legendBottom, ly + 1.5);
     });
 
-    return Math.max(y + radius * 2, rowY) + 2;
+    return legendBottom + 2;
 }
 
 export const peso = (value: number) => `PHP ${pdfMoney(value)}`;

@@ -4,9 +4,6 @@ import {
     Bar,
     BarChart,
     CartesianGrid,
-    Cell,
-    Pie,
-    PieChart,
     ResponsiveContainer,
     Tooltip,
     XAxis,
@@ -19,21 +16,8 @@ import {
     formatTrendLabel,
 } from '../lib/format';
 import type { Slice } from '../lib/format';
+import { layoutPieCallouts, pieSectorPath } from '../lib/pie-callouts';
 import type { TrendPoint } from '../lib/types';
-
-/** Soft palette built from the theme's chart colours; "Others" stays grey. */
-const COLORS = [
-    'var(--chart-1)',
-    'var(--chart-2)',
-    'var(--chart-3)',
-    'var(--chart-4)',
-    'var(--chart-5)',
-    'oklch(0.74 0.07 300)',
-];
-const OTHERS = 'oklch(0.82 0.01 260)';
-
-const sliceColor = (slice: Slice, index: number) =>
-    slice.name === 'Others' ? OTHERS : COLORS[index % COLORS.length];
 
 const tooltipStyle = {
     background: 'var(--popover)',
@@ -58,7 +42,11 @@ export function ChartCard({
     );
 }
 
-/** Pie with a legend listing each slice's share and amount. */
+/**
+ * Solid pie chart with elbow leader-line callouts (white-ringed anchor dot
+ * inside each slice -> angled line -> horizontal line -> bold value and
+ * percentage) plus a compact colour key below for slice names.
+ */
 export function SharePie({
     slices,
     valueFormat = formatMoney,
@@ -66,7 +54,17 @@ export function SharePie({
     slices: Slice[];
     valueFormat?: (v: number) => string;
 }) {
-    if (!slices.length) {
+    const callouts = layoutPieCallouts(slices, {
+        cx: 240,
+        cy: 124,
+        radius: 68,
+        columnOffset: 118,
+        minGap: 32,
+        minY: 24,
+        maxY: 224,
+    });
+
+    if (!callouts.length) {
         return (
             <p className="py-10 text-center text-sm text-muted-foreground">
                 No sales in this period.
@@ -75,55 +73,95 @@ export function SharePie({
     }
 
     return (
-        <div className="grid items-center gap-4 sm:grid-cols-[150px_minmax(0,1fr)] print:grid-cols-[150px_minmax(0,1fr)]">
-            <div className="h-40">
-                <ResponsiveContainer>
-                    <PieChart>
-                        <Pie
-                            data={slices}
-                            dataKey="value"
-                            nameKey="name"
-                            innerRadius="55%"
-                            outerRadius="95%"
-                            paddingAngle={1}
-                            isAnimationActive={false}
+        <div className="grid gap-3">
+            <svg
+                viewBox="0 0 480 248"
+                role="img"
+                aria-label="Sales share pie chart"
+                className="mx-auto h-60 w-full max-w-[520px] overflow-visible select-none"
+            >
+                <g>
+                    {callouts.map((c) => (
+                        <path
+                            key={c.slice.name}
+                            d={pieSectorPath(
+                                240,
+                                124,
+                                68,
+                                c.startAngle,
+                                c.endAngle,
+                            )}
+                            fill={c.color}
+                            stroke="var(--card)"
+                            strokeWidth={2}
+                            strokeLinejoin="round"
                         >
-                            {slices.map((slice, index) => (
-                                <Cell
-                                    key={slice.name}
-                                    fill={sliceColor(slice, index)}
-                                    stroke="var(--card)"
+                            <title>
+                                {`${c.slice.name}: ${valueFormat(c.slice.value)} (${formatPercent(c.slice.share)})`}
+                            </title>
+                        </path>
+                    ))}
+                </g>
+
+                <g>
+                    {callouts.map((c) => {
+                        const isRight = c.side === 'right';
+                        const textX = c.labelX + (isRight ? 6 : -6);
+                        const anchor = isRight ? 'start' : 'end';
+
+                        return (
+                            <g key={c.slice.name}>
+                                <polyline
+                                    points={`${c.anchorX},${c.anchorY} ${c.elbowX},${c.elbowY} ${c.labelX},${c.labelY}`}
+                                    fill="none"
+                                    stroke="var(--foreground)"
+                                    strokeOpacity={0.78}
+                                    strokeWidth={1.5}
+                                    strokeLinejoin="round"
+                                    strokeLinecap="round"
                                 />
-                            ))}
-                        </Pie>
-                        <Tooltip
-                            contentStyle={tooltipStyle}
-                            formatter={(value) => valueFormat(Number(value))}
-                        />
-                    </PieChart>
-                </ResponsiveContainer>
-            </div>
-            <ul className="grid min-w-0 gap-1.5 text-sm">
-                {slices.map((slice, index) => (
+                                <circle
+                                    cx={c.anchorX}
+                                    cy={c.anchorY}
+                                    r={3.5}
+                                    fill="#1e293b"
+                                    stroke="#ffffff"
+                                    strokeWidth={1.75}
+                                />
+                                <text
+                                    x={textX}
+                                    y={c.labelY - 2}
+                                    textAnchor={anchor}
+                                    className="fill-foreground text-[12px] font-bold tabular-nums"
+                                >
+                                    {valueFormat(c.slice.value)}
+                                </text>
+                                <text
+                                    x={textX}
+                                    y={c.labelY + 12}
+                                    textAnchor={anchor}
+                                    className="fill-muted-foreground text-[11px] tabular-nums"
+                                >
+                                    {formatPercent(c.slice.share)}
+                                </text>
+                            </g>
+                        );
+                    })}
+                </g>
+            </svg>
+
+            <ul className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 border-t pt-2.5 text-xs">
+                {callouts.map((c) => (
                     <li
-                        key={slice.name}
-                        className="flex min-w-0 items-center gap-2"
+                        key={c.slice.name}
+                        className="flex max-w-full min-w-0 items-center gap-1.5"
                     >
                         <span
                             className="size-2.5 shrink-0 rounded-full"
-                            style={{ background: sliceColor(slice, index) }}
+                            style={{ background: c.color }}
                         />
-                        <span
-                            className="min-w-0 flex-1 truncate"
-                            title={slice.name}
-                        >
-                            {slice.name}
-                        </span>
-                        <span className="shrink-0 text-muted-foreground tabular-nums">
-                            {formatPercent(slice.share)}
-                        </span>
-                        <span className="shrink-0 text-right whitespace-nowrap tabular-nums">
-                            {valueFormat(slice.value)}
+                        <span className="truncate" title={c.slice.name}>
+                            {c.slice.name}
                         </span>
                     </li>
                 ))}

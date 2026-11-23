@@ -12,27 +12,7 @@ import {
     importMethod as salesImport,
     report as salesReport,
 } from '@/routes/sales';
-import type { NavEntry, NavItem } from '@/types';
-
-export type AutomationTool = NavItem & { description: string };
-
-/** Workbook tools, listed once for the sidebar and the dashboard. */
-export const workflows: AutomationTool[] = [
-    {
-        title: 'PO & SI workflow',
-        href: poMatching(),
-        icon: FileCheck2,
-        description:
-            'Compare purchase orders with goods receipts and review delivery remarks.',
-    },
-    {
-        title: 'RA item matching',
-        href: raMatching(),
-        icon: ListChecks,
-        description:
-            'Match document references to ICR sales invoices and fill the ITEM column.',
-    },
-];
+import type { NavEntry } from '@/types';
 
 export const mainNavItems: NavEntry[] = [
     { title: 'Dashboard', href: dashboard(), icon: LayoutGrid },
@@ -44,5 +24,20 @@ export const mainNavItems: NavEntry[] = [
             { title: 'Import DSR', href: salesImport(), icon: FileUp },
         ],
     },
-    { title: 'Automate', icon: Workflow, items: workflows },
+    {
+        title: 'Automate',
+        icon: Workflow,
+        items: [
+            {
+                title: 'PO & SI workflow',
+                href: poMatching(),
+                icon: FileCheck2,
+            },
+            {
+                title: 'RA item matching',
+                href: raMatching(),
+                icon: ListChecks,
+            },
+        ],
+    },
 ];

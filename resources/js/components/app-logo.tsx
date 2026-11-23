@@ -1,14 +1,16 @@
-import { BrandLogo, BrandMark } from '@/components/brand-logo';
+import { BrandLogo } from '@/components/brand-logo';
 
 /**
- * Sidebar logo: the full Park Solutions logo (transparent PNG), or just the
- * pin when the sidebar is collapsed to icons.
+ * Sidebar brand: the Park Solutions Inc. logo with "Sales Management System"
+ * beside it, collapsing to just the logo when the sidebar is in icon mode.
  */
 export default function AppLogo() {
     return (
-        <div className="flex items-center justify-center px-1 py-1">
-            <BrandLogo className="h-14 w-auto group-data-[collapsible=icon]:hidden" />
-            <BrandMark className="hidden size-7 group-data-[collapsible=icon]:block" />
+        <div className="flex items-center gap-2.5 px-1.5 py-1 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+            <BrandLogo className="h-9 w-auto shrink-0 group-data-[collapsible=icon]:h-5" />
+            <span className="text-left text-sm leading-tight font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden">
+                Sales Management System
+            </span>
         </div>
     );
 }

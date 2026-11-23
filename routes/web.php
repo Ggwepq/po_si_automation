@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Sales\DsrImportController;
 use App\Http\Controllers\Sales\SalesReportController;
 use Illuminate\Support\Facades\Route;
@@ -8,7 +9,7 @@ use Illuminate\Support\Facades\Route;
 Route::redirect('/', '/dashboard')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::inertia('dashboard', 'dashboard')->name('dashboard');
+    Route::get('dashboard', [DashboardController::class, 'show'])->name('dashboard');
 
     // Workbook tools run entirely in the browser; the server only serves the page.
     Route::inertia('po-matching', 'po-matching/index')->name('po-matching');

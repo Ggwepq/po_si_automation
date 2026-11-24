@@ -2,13 +2,12 @@
 
 use App\Domains\Sales\Actions\ImportDsrReports;
 use App\Domains\Sales\Data\DsrReportData;
-use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
 
 /** Imports DSRs directly through the action: [site, company, date, [[article, qty, sales], ...], vendor?]. */
 function seedSales(array $reports): void
 {
-    app(ImportDsrReports::class)->handle(array_map(fn (array $r) => DsrReportData::fromArray([
+    app(ImportDsrReports::class)->handle(testCompany(), array_map(fn (array $r) => DsrReportData::fromArray([
         'vendor_code' => $r[4] ?? 'V1',
         'vendor_name' => 'VENDOR '.($r[4] ?? 'V1'),
         'site_code' => $r[0],
@@ -30,7 +29,7 @@ function seedSales(array $reports): void
 beforeEach(function () {
     // A fixed "today" after all seeded sales keeps the tests independent of the real date.
     $this->travelTo('2027-01-15');
-    $this->actingAs(User::factory()->create());
+    $this->actingAs(companyUser());
 
     seedSales([
         ['0001', 'SVI', '2026-11-03', [['LATTE', '10', '300.00'], ['MOCHA', '2', '60.00']]],

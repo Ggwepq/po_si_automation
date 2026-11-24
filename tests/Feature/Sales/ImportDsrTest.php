@@ -6,7 +6,6 @@ use App\Domains\Sales\Models\DsrLine;
 use App\Domains\Sales\Models\DsrReport;
 use App\Domains\Sales\Models\Site;
 use App\Domains\Sales\Models\Vendor;
-use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
 
 /** @return array<string, mixed> */
@@ -45,7 +44,7 @@ function importDsr(array $reports, string $fileName = 'dsr.xlsx')
 }
 
 beforeEach(function () {
-    $this->actingAs(User::factory()->create());
+    $this->actingAs(companyUser());
 });
 
 it('requires login', function () {

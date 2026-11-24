@@ -60,10 +60,21 @@ class SalesReportRequest extends FormRequest
     public function filter(): ReportFilter
     {
         return new ReportFilter(
+            companyId: $this->companyId(),
             vendorCodes: $this->list('vendors'),
             companies: $this->list('companies'),
             siteCodes: $this->list('sites'),
         );
+    }
+
+    /** The 'company' middleware guarantees the user has one. */
+    private function companyId(): int
+    {
+        $companyId = $this->user()?->company_id;
+
+        abort_unless(is_int($companyId), 403);
+
+        return $companyId;
     }
 
     /** @return list<string> unique, non-empty values */

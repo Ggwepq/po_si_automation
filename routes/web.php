@@ -7,7 +7,8 @@ use Illuminate\Support\Facades\Route;
 // Internal tool: there is no public landing page. Guests are sent to log in.
 Route::redirect('/', '/dashboard')->name('home');
 
-Route::middleware(['auth', 'verified'])->group(function () {
+// Company pages: every query is scoped to the signed-in user's company.
+Route::middleware(['auth', 'verified', 'company'])->group(function () {
     Route::inertia('dashboard', 'dashboard')->name('dashboard');
 
     // Workbook tools run entirely in the browser; the server only serves the page.
@@ -24,4 +25,5 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('sales.import.summary');
 });
 
+require __DIR__.'/admin.php';
 require __DIR__.'/settings.php';

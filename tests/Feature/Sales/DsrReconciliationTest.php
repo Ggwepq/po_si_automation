@@ -12,7 +12,6 @@ use App\Domains\Sales\Enums\ImportKind;
 use App\Domains\Sales\Enums\PeriodType;
 use App\Domains\Sales\Models\DsrImport;
 use App\Domains\Sales\Models\DsrSummary;
-use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -33,13 +32,13 @@ function summaryRows(array $rows, string $vendor = 'V1'): array
 
 function importSummaries(array $rows): DsrImport
 {
-    return app(ImportDsrSummaries::class)->handle(array_map(DsrSummaryData::fromArray(...), summaryRows($rows)), 'DSRS_DETAIL.xlsx', null);
+    return app(ImportDsrSummaries::class)->handle(testCompany(), array_map(DsrSummaryData::fromArray(...), summaryRows($rows)), 'DSRS_DETAIL.xlsx', null);
 }
 
 /** @param list<array{0: string, 1: string, 2: list<string>}> $days [site, date, line totals] */
 function importDetail(array $days): void
 {
-    app(ImportDsrReports::class)->handle(array_map(fn (array $d) => DsrReportData::fromArray([
+    app(ImportDsrReports::class)->handle(testCompany(), array_map(fn (array $d) => DsrReportData::fromArray([
         'vendor_code' => 'V1',
         'vendor_name' => 'VENDOR V1',
         'site_code' => $d[0],
@@ -57,9 +56,9 @@ function importDetail(array $days): void
     ]), $days), 'DSR_DETAIL.xlsx', null);
 }
 
-function reconcile(string $date = '2026-10-01', ReportFilter $filter = new ReportFilter): array
+function reconcile(string $date = '2026-10-01', ?ReportFilter $filter = null): array
 {
-    return app(ReconcileDsr::class)->handle(ReportPeriod::containing(PeriodType::Monthly, CarbonImmutable::parse($date)), $filter);
+    return app(ReconcileDsr::class)->handle(ReportPeriod::containing(PeriodType::Monthly, CarbonImmutable::parse($date)), $filter ?? new ReportFilter(testCompany()->id));
 }
 
 beforeEach(function () {
@@ -124,7 +123,7 @@ it('honours the store filter', function () {
     importSummaries([['0001', '2026-10-01', '10.00'], ['0002', '2026-10-01', '99.00']]);
     importDetail([['0001', '2026-10-01', ['10.00']]]);
 
-    expect(reconcile('2026-10-01', new ReportFilter(siteCodes: ['0001'])))->toMatchArray(['balanced' => true]);
+    expect(reconcile('2026-10-01', new ReportFilter(testCompany()->id, siteCodes: ['0001'])))->toMatchArray(['balanced' => true]);
 });
 
 it('counts summary days of 0.00 as no sales in data completeness', function () {
@@ -133,6 +132,7 @@ it('counts summary days of 0.00 as no sales in data completeness', function () {
 
     $coverage = app(CheckDsrCoverage::class)->handle(
         ReportPeriod::containing(PeriodType::Custom, CarbonImmutable::parse('2026-11-02'), CarbonImmutable::parse('2026-11-03')),
+        new ReportFilter(testCompany()->id),
     );
 
     expect($coverage['complete'])->toBeTrue()
@@ -145,6 +145,7 @@ it('treats a store left out of the summary for a day as no sales', function () {
 
     $coverage = app(CheckDsrCoverage::class)->handle(
         ReportPeriod::containing(PeriodType::Custom, CarbonImmutable::parse('2026-11-02'), CarbonImmutable::parse('2026-11-04')),
+        new ReportFilter(testCompany()->id),
     );
     $store = collect($coverage['stores'])->firstWhere('code', '0002');
 
@@ -158,6 +159,7 @@ it('flags a day whose summary shows sales but has no DSR imported', function () 
 
     $coverage = app(CheckDsrCoverage::class)->handle(
         ReportPeriod::containing(PeriodType::Custom, CarbonImmutable::parse('2026-11-02'), CarbonImmutable::parse('2026-11-03')),
+        new ReportFilter(testCompany()->id),
     );
 
     expect($coverage['daysWithoutAnyDsr'])->toBe(['2026-11-02'])
@@ -165,7 +167,7 @@ it('flags a day whose summary shows sales but has no DSR imported', function () 
 });
 
 it('imports a summary through the import page', function () {
-    $this->actingAs(User::factory()->create())
+    $this->actingAs(companyUser())
         ->post(route('sales.import.summary'), ['file_name' => 'DSRS_DETAIL.xlsx', 'summaries' => summaryRows([['0001', '2026-10-01', '12.50']])])
         ->assertRedirect()
         ->assertSessionHasNoErrors();
@@ -174,7 +176,7 @@ it('imports a summary through the import page', function () {
 });
 
 it('rejects summary amounts that are not plain decimals', function () {
-    $this->actingAs(User::factory()->create())
+    $this->actingAs(companyUser())
         ->post(route('sales.import.summary'), ['file_name' => 'x.xlsx', 'summaries' => summaryRows([['0001', '2026-10-01', '1e5']])])
         ->assertSessionHasErrors('summaries.0.total_sales');
 });
@@ -186,7 +188,7 @@ it('requires login to import a summary', function () {
 it('sends the reconciliation to the sales report', function () {
     importSummaries([['0001', '2026-10-01', '10.00']]);
 
-    $this->actingAs(User::factory()->create())
+    $this->actingAs(companyUser())
         ->get(route('sales.report', ['period' => 'monthly', 'date' => '2026-10-01']))
         ->assertInertia(fn (Assert $page) => $page
             ->where('reconciliation.checked', true)

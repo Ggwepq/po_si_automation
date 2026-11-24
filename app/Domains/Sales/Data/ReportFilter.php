@@ -2,7 +2,10 @@
 
 namespace App\Domains\Sales\Data;
 
-/** Which sales a report covers. Empty lists mean "all". */
+/**
+ * Which sales a report covers: always one company's (the signed-in user's),
+ * narrowed by vendor, store chain and store. Empty lists mean "all".
+ */
 final readonly class ReportFilter
 {
     /**
@@ -11,6 +14,7 @@ final readonly class ReportFilter
      * @param  list<string>  $siteCodes
      */
     public function __construct(
+        public int $companyId,
         public array $vendorCodes = [],
         public array $companies = [],
         public array $siteCodes = [],
@@ -26,6 +30,7 @@ final readonly class ReportFilter
         };
 
         return [
+            'company' => (string) $this->companyId,
             'vendors' => $sorted($this->vendorCodes),
             'companies' => $sorted($this->companies),
             'sites' => $sorted($this->siteCodes),

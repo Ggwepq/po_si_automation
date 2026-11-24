@@ -377,6 +377,6 @@ export function appendixChapter(page: PdfLayout, input: ReportPdfInput): void {
     page.heading('About this report', undefined, 20);
     page.note(
         `Source: SM Vendor Portal Daily Sales Reports (DSR). Net sales exclude VAT and are in Philippine pesos. Comparisons use ${input.period.previous.label}. ` +
-            'Estimated upside figures are projections, not forecasts. Prepared by the Sales Management System, Park Solutions Inc.',
+            `Estimated upside figures are projections, not forecasts. Prepared by the Sales Management System for ${input.companyName}.`,
     );
 }

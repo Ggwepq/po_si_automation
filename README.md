@@ -23,12 +23,14 @@ Create an empty database named `sales_management` (utf8mb4), set the `DB_*` valu
 `.env`, then:
 
 ```bash
-php artisan migrate
-php artisan user:create
+php artisan migrate --seed
 composer dev
 ```
 
-Open http://localhost:8000 and log in with the account you created.
+Open http://localhost:8000 and log in as `admin@test.com` (super admin) or
+`juan@gmail.com` (HnF), both with the password `password`. The seeder adds
+these sample accounts and the Oroza Enterprise and HnF companies; change the
+passwords before the app is reachable from the internet.
 
 > Run PHP commands from PowerShell, which uses Herd's PHP. Git Bash may find
 > XAMPP's older PHP first.
@@ -46,16 +48,29 @@ Runs formatting, linting, type checks (TypeScript and PHPStan), frontend tests
 Branches: `dev` is where development happens; `master` holds released code
 and is updated by merging `dev`. See [AGENTS.md](AGENTS.md#git).
 
-## Accounts
+## Companies and accounts
 
-Public sign-up is disabled. Create each person's account from the server:
+The app serves several companies of the Oroza Group. Each company's users
+see only that company's sales, imports and reports, under its own logo.
+Everyone logs in on the same login page (Oroza Group logo) and lands in their
+own company. Data imported before companies existed belongs to **Oroza
+Enterprise**.
+
+Public sign-up is disabled. A **super admin** manages accounts under
+**Companies**: add a company (name and optional logo), open it, and add its
+users. Super admins only manage companies and users; they do not see company
+data.
+
+Accounts can also be created from the server. The command asks for the
+password, so it isn't saved in shell history:
 
 ```bash
-php artisan user:create --name="Jane Doe" --email=jane@example.com
+php artisan user:create --name="Jane Doe" --email=jane@example.com --company=hnf
+php artisan user:create --name="Admin" --email=admin@example.com --super-admin
 ```
 
-The command asks for the password, so it isn't saved in shell history. Users
-can turn on two-factor authentication under **Settings → Security**.
+Users can change their password and turn on two-factor authentication under
+**Settings**.
 
 ## Workflows
 

@@ -143,15 +143,17 @@ explain why it is worth it. Before finishing, check each item.
 
 ## What this is
 
-**Sales Management System**: an internal web app for a small team (3–4 accounts, one
-shared role) that automates spreadsheet work and will grow into a sales
-management system fed by the SM Vendor Portal's Daily Sales Report (DSR).
+**Sales Management System**: an internal web app for the companies of the
+Oroza Group (e.g. Oroza Enterprise, HnF) that automates spreadsheet work and
+will grow into a sales management system fed by the SM Vendor Portal's Daily
+Sales Report (DSR). Each company has a few accounts; super admins manage
+companies and accounts.
 
 | Layer    | Technology                                                       |
 | -------- | ---------------------------------------------------------------- |
 | Backend  | Laravel 13, PHP 8.4+, MySQL/MariaDB                              |
 | Frontend | React 19 + TypeScript (strict), Inertia 3, Tailwind 4, shadcn/ui |
-| Auth     | Laravel Fortify, invite-only (`php artisan user:create`)         |
+| Auth     | Fortify, invite-only (admin area or `php artisan user:create`)   |
 | Routes   | Laravel Wayfinder generates typed route helpers for React        |
 | Tooling  | Pint, Larastan (level 7), Pest; Vite+ (`vp`: lint, fmt, Vitest)  |
 | Hosting  | Hostinger Business (PHP + MySQL)                                 |
@@ -250,8 +252,14 @@ sales report. How the pieces fit:
     - _Trade-off, chosen on purpose:_ small synchronous batches instead of a
       queued job. Each batch takes well under a second, users see the result
       immediately, and shared hosting runs queues only through cron.
-- **Idempotent by design:** one `dsr_reports` row per vendor, store and day
-  (unique index). Re-importing a store-day replaces its lines, so revised DSRs
+- **Per company:** `dsr_imports`, `dsr_reports`, `dsr_lines` and
+  `dsr_summaries` carry `company_id`, and their indexes start with it.
+  Vendors, stores (`sites`) and items (`articles`) are shared: they are SM's
+  own codes, so a later import may update a shared name. Filter choices list
+  only the vendors and stores in the company's own imports. A store's
+  "company" (SVI, SMCo, SSM) is the SM store chain, not the app's company.
+- **Idempotent by design:** one `dsr_reports` row per company, vendor, store
+  and day (unique index). Re-importing a store-day replaces its lines, so revised DSRs
   from SM never double-count, and one vendor's import never touches another's.
 - **Report filters** (vendors, companies, stores) are lists in the URL
   (`companies[]=SVI`); empty means "all". Build URLs with `reportUrl()` in
@@ -305,6 +313,12 @@ sales report. How the pieces fit:
 ## Security
 
 - Accounts are **invite-only**. Do not re-enable `Features::registration()`.
+- **Companies are isolated.** Every company page sits behind the `company`
+  middleware, and every query on company data filters by the signed-in
+  user's `company_id` (sales: through `ReportFilter::$companyId` and
+  `SalesScope`). Never read company data without it. The admin area
+  (`super-admin` middleware) manages companies and accounts only.
+- `company_id` and `is_super_admin` are never mass-assignable from requests.
 - Every route that shows data sits behind `auth` + `verified` middleware.
 - Validate all input with Form Requests; authorise anything user-specific.
 - Secrets live in `.env` only (never committed). Use `config()` in code, not

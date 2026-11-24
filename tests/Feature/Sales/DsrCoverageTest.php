@@ -6,14 +6,13 @@ use App\Domains\Sales\Data\DsrReportData;
 use App\Domains\Sales\Data\ReportFilter;
 use App\Domains\Sales\Data\ReportPeriod;
 use App\Domains\Sales\Enums\PeriodType;
-use App\Models\User;
 use Carbon\CarbonImmutable;
 use Inertia\Testing\AssertableInertia as Assert;
 
 /** One DSR per [site, company, date]; contents do not matter for coverage. */
 function seedDays(array $storeDays): void
 {
-    app(ImportDsrReports::class)->handle(array_map(fn (array $d) => DsrReportData::fromArray([
+    app(ImportDsrReports::class)->handle(testCompany(), array_map(fn (array $d) => DsrReportData::fromArray([
         'vendor_code' => 'V1',
         'vendor_name' => 'VENDOR',
         'site_code' => $d[0],
@@ -31,11 +30,11 @@ function seedDays(array $storeDays): void
     ]), $storeDays), 'seed.xlsx', null);
 }
 
-function coverage(string $type, string $date, ReportFilter $filter = new ReportFilter): array
+function coverage(string $type, string $date, ?ReportFilter $filter = null): array
 {
     return app(CheckDsrCoverage::class)->handle(
         ReportPeriod::containing(PeriodType::from($type), CarbonImmutable::parse($date)),
-        $filter,
+        $filter ?? new ReportFilter(testCompany()->id),
     );
 }
 
@@ -83,6 +82,7 @@ it('checks days up to yesterday, since SM posts a DSR the next day', function ()
 it('is complete only when every expected store has every day', function () {
     $range = fn () => app(CheckDsrCoverage::class)->handle(
         ReportPeriod::containing(PeriodType::Custom, CarbonImmutable::parse('2026-11-09'), CarbonImmutable::parse('2026-11-10')),
+        new ReportFilter(testCompany()->id),
     );
 
     seedDays([['0001', 'SVI', '2026-11-09']]);
@@ -105,13 +105,13 @@ it('summarises long periods per month', function () {
 it('respects the company filter', function () {
     seedDays([['0001', 'SVI', '2026-11-02'], ['0002', 'SSM', '2026-11-02']]);
 
-    $stores = coverage('daily', '2026-11-02', new ReportFilter(companies: ['SSM']))['stores'];
+    $stores = coverage('daily', '2026-11-02', new ReportFilter(testCompany()->id, companies: ['SSM']))['stores'];
 
     expect(array_column($stores, 'code'))->toBe(['0002']);
 });
 
 it('is part of the sales report page', function () {
-    $this->actingAs(User::factory()->create());
+    $this->actingAs(companyUser());
     seedDays([['0001', 'SVI', '2026-11-02']]);
 
     $this->get(route('sales.report', ['period' => 'daily', 'date' => '2026-11-02']))

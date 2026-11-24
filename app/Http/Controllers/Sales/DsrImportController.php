@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Sales;
 
+use App\Domains\Companies\Models\Company;
 use App\Domains\Sales\Actions\ImportDsrReports;
 use App\Domains\Sales\Actions\ImportDsrSummaries;
 use App\Domains\Sales\Models\DsrImport;
@@ -9,15 +10,17 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Sales\ImportDsrRequest;
 use App\Http\Requests\Sales\ImportDsrSummaryRequest;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class DsrImportController extends Controller
 {
-    public function create(): Response
+    public function create(Request $request): Response
     {
         return Inertia::render('sales/import', [
             'imports' => DsrImport::query()
+                ->where('company_id', $this->company($request)->id)
                 ->with('user:id,name')
                 ->latest()
                 ->limit(20)
@@ -44,7 +47,7 @@ class DsrImportController extends Controller
 
     public function store(ImportDsrRequest $request, ImportDsrReports $import): RedirectResponse
     {
-        $result = $import->handle($request->reports(), $request->string('file_name')->toString(), $request->user());
+        $result = $import->handle($this->company($request), $request->reports(), $request->string('file_name')->toString(), $request->user());
 
         Inertia::flash('importResult', [
             'reportCount' => $result->report_count,
@@ -57,7 +60,7 @@ class DsrImportController extends Controller
 
     public function storeSummary(ImportDsrSummaryRequest $request, ImportDsrSummaries $import): RedirectResponse
     {
-        $result = $import->handle($request->summaries(), $request->string('file_name')->toString(), $request->user());
+        $result = $import->handle($this->company($request), $request->summaries(), $request->string('file_name')->toString(), $request->user());
 
         Inertia::flash('importResult', [
             'reportCount' => $result->report_count,
@@ -66,5 +69,15 @@ class DsrImportController extends Controller
         ]);
 
         return back();
+    }
+
+    /** The 'company' middleware guarantees the user has one. */
+    private function company(Request $request): Company
+    {
+        $company = $request->user()?->company;
+
+        abort_unless($company instanceof Company, 403);
+
+        return $company;
     }
 }

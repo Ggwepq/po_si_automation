@@ -20,8 +20,8 @@ class SalesReportController extends Controller
         GetSalesReportFilters $filters,
         ReconcileDsr $reconcile,
     ): Response {
-        $period = $request->period($filters->latestDate());
         $filter = $request->filter();
+        $period = $request->period($filters->latestDate($filter->companyId));
         $previous = $period->previous();
         $next = $period->next();
 
@@ -40,7 +40,7 @@ class SalesReportController extends Controller
                 'companies' => $filter->companies,
                 'sites' => $filter->siteCodes,
             ],
-            'filters' => $filters->handle(),
+            'filters' => $filters->handle($filter->companyId),
             'report' => $report->handle($period, $filter),
             'coverage' => $coverage->handle($period, $filter),
             'reconciliation' => $reconcile->handle($period, $filter),

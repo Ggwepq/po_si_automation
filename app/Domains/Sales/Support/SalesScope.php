@@ -10,8 +10,9 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Narrows any per-store-day sales table (dsr_lines, dsr_summaries) to a date
- * range and the report filter, so every report reads the same rows.
+ * Narrows any per-store-day sales table (dsr_lines, dsr_summaries) to one
+ * company, a date range and the report filter, so every report reads the
+ * same rows and never another company's.
  */
 final class SalesScope
 {
@@ -27,6 +28,7 @@ final class SalesScope
     public static function apply(Builder $query, ReportFilter $filter, CarbonImmutable $from, CarbonImmutable $to): Builder
     {
         return $query
+            ->where('company_id', $filter->companyId)
             ->whereBetween('transaction_date', [$from->toDateString(), $to->toDateString()])
             ->when($filter->vendorCodes, fn (Builder $q, array $codes) => $q->whereIn('vendor_id', Vendor::select('id')->whereIn('code', $codes)))
             ->when($filter->companies, fn (Builder $q, array $companies) => $q->whereIn('site_id', Site::select('id')->whereIn('company', $companies)))

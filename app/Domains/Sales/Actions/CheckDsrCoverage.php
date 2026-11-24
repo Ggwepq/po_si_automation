@@ -37,7 +37,7 @@ class CheckDsrCoverage
     public function __construct(private SalesReportCache $cache) {}
 
     /** @return array<string, mixed> */
-    public function handle(ReportPeriod $period, ReportFilter $filter = new ReportFilter): array
+    public function handle(ReportPeriod $period, ReportFilter $filter): array
     {
         return $this->cache->remember([
             'coverage' => true,

@@ -1,15 +1,30 @@
-import { BrandLogo } from '@/components/brand-logo';
+import { usePage } from '@inertiajs/react';
+import { CompanyLogo, GroupMark } from '@/components/brand-logo';
 
 /**
- * Sidebar brand: the Park Solutions Inc. logo with "Sales Management System"
- * beside it, collapsing to just the logo when the sidebar is in icon mode.
+ * Sidebar brand: the user's company logo and name, or the Oroza Group mark
+ * for super admins. Collapses to just the logo in icon mode.
  */
 export default function AppLogo() {
+    const { company } = usePage().props.auth;
+
     return (
         <div className="flex items-center gap-2.5 px-1.5 py-1 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
-            <BrandLogo className="h-9 w-auto shrink-0 group-data-[collapsible=icon]:h-5" />
-            <span className="text-left text-sm leading-tight font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden">
-                Sales Management System
+            {company ? (
+                <CompanyLogo
+                    company={company}
+                    className="max-w-24 shrink-0 group-data-[collapsible=icon]:h-5"
+                />
+            ) : (
+                <GroupMark className="shrink-0 group-data-[collapsible=icon]:size-5" />
+            )}
+            <span className="grid text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+                <span className="truncate font-semibold text-sidebar-foreground">
+                    {company?.name ?? 'Oroza Group'}
+                </span>
+                <span className="truncate text-xs text-muted-foreground">
+                    {company ? 'Sales Management System' : 'Super admin'}
+                </span>
             </span>
         </div>
     );

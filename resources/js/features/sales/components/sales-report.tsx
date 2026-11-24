@@ -1,7 +1,7 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { FileUp } from 'lucide-react';
 import { useState } from 'react';
-import { BrandLogo } from '@/components/brand-logo';
+import { CompanyLogo } from '@/components/brand-logo';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { importMethod as importRoute } from '@/routes/sales';
@@ -75,6 +75,7 @@ export function SalesReport({
     reconciliation,
     generatedAt,
 }: Props) {
+    const { company } = usePage().props.auth;
     const [measure, setMeasure] = useState<'qty' | 'sales'>('qty');
     const [pdfBusy, setPdfBusy] = useState(false);
     const scope = describeScope(filters, selected);
@@ -99,8 +100,10 @@ export function SalesReport({
                     reconciliation,
                     scope,
                     generatedAt,
+                    companyName: company?.name ?? 'Sales Management System',
                     autoPrint: print,
                 },
+                company?.logoUrl ?? null,
                 `Sales_Report_${period.start}_to_${period.end}.pdf`,
             );
         } catch {
@@ -131,7 +134,12 @@ export function SalesReport({
                     </p>
                 </div>
                 <div className="hidden text-right text-xs text-muted-foreground print:block">
-                    <BrandLogo className="ml-auto w-28" />
+                    {company && (
+                        <CompanyLogo
+                            company={company}
+                            className="ml-auto h-10"
+                        />
+                    )}
                     Generated {new Date(generatedAt).toLocaleString('en-PH')}
                 </div>
             </header>

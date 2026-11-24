@@ -1,5 +1,7 @@
 <?php
 
+use App\Domains\Companies\Models\Company;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -44,7 +46,18 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+/** The company a test works in; created on first use and shared for the rest of the test. */
+function testCompany(): Company
 {
-    // ..
+    if (! app()->bound('tests.company')) {
+        app()->instance('tests.company', Company::factory()->create());
+    }
+
+    return app('tests.company');
+}
+
+/** A user of testCompany(), so they see the sales a test imports for it. */
+function companyUser(): User
+{
+    return User::factory()->for(testCompany())->create();
 }

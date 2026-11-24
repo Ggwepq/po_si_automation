@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { reconciliation } from './reconciliation.fixture';
-import { buildReportPdf } from './report-pdf';
+import { buildReportPdf, fitInside } from './report-pdf';
 import type { ReportPeriod, SalesReport, SalesTotals } from './types';
 
 const totals = (sales: number): SalesTotals => ({
@@ -84,6 +84,7 @@ describe('buildReportPdf', () => {
             report,
             period,
             scope: 'All stores',
+            companyName: 'Oroza Enterprise',
             generatedAt: '2026-11-11T10:00:00+08:00',
         });
         const content = doc.output();
@@ -119,6 +120,7 @@ describe('buildReportPdf', () => {
             report,
             period,
             scope: 'All stores',
+            companyName: 'Oroza Enterprise',
             generatedAt: '2026-11-11T10:00:00+08:00',
             reconciliation: reconciliation(),
         }).output();
@@ -133,11 +135,28 @@ describe('buildReportPdf', () => {
             report,
             period,
             scope: 'All stores',
+            companyName: 'Oroza Enterprise',
             generatedAt: '2026-11-11T10:00:00+08:00',
             autoPrint: true,
         });
 
         // jsPDF adds an "open action" that runs the viewer's Print command.
         expect(doc.output()).toMatch(/\/N \/Print/);
+    });
+});
+
+describe('fitInside', () => {
+    it('keeps a wide logo inside the width', () => {
+        expect(fitInside({ width: 234, height: 72 }, 32, 18)).toEqual({
+            width: 32,
+            height: (72 * 32) / 234,
+        });
+    });
+
+    it('keeps a tall logo inside the height', () => {
+        expect(fitInside({ width: 146, height: 135 }, 32, 18)).toEqual({
+            width: (146 * 18) / 135,
+            height: 18,
+        });
     });
 });

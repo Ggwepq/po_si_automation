@@ -1,22 +1,26 @@
 import type { ReportPdfInput } from './report-pdf';
 
-const LOGO_URL = '/images/park-solutions-logo.png';
+/**
+ * Loads the company logo as a PNG data URL with its size. Drawing it on a
+ * canvas converts any web format (e.g. WebP) to PNG, which jsPDF supports.
+ */
+async function loadLogo(url: string | null): Promise<ReportPdfInput['logo']> {
+    if (!url) {
+        return undefined;
+    }
 
-async function loadLogo(): Promise<string | undefined> {
     try {
-        const blob = await (await fetch(LOGO_URL)).blob();
+        const bitmap = await createImageBitmap(await (await fetch(url)).blob());
+        const canvas = document.createElement('canvas');
+        canvas.width = bitmap.width;
+        canvas.height = bitmap.height;
+        canvas.getContext('2d')?.drawImage(bitmap, 0, 0);
 
-        return await new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () =>
-                resolve(
-                    typeof reader.result === 'string'
-                        ? reader.result
-                        : undefined,
-                );
-            reader.onerror = () => resolve(undefined);
-            reader.readAsDataURL(blob);
-        });
+        return {
+            dataUrl: canvas.toDataURL('image/png'),
+            width: bitmap.width,
+            height: bitmap.height,
+        };
     } catch {
         // The report is still useful without the logo.
         return undefined;
@@ -30,6 +34,7 @@ async function loadLogo(): Promise<string | undefined> {
  */
 export async function openReportPdf(
     input: Omit<ReportPdfInput, 'logo'>,
+    logoUrl: string | null,
     fileName: string,
 ): Promise<void> {
     const tab = window.open('', '_blank');
@@ -41,7 +46,7 @@ export async function openReportPdf(
     try {
         const [{ buildReportPdf }, logo] = await Promise.all([
             import('./report-pdf'),
-            loadLogo(),
+            loadLogo(logoUrl),
         ]);
         const doc = buildReportPdf({ ...input, logo });
         const url = URL.createObjectURL(doc.output('blob'));

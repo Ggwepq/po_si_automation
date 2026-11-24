@@ -12,6 +12,7 @@ use Illuminate\Support\Carbon;
  * A DSR document: one store's sales for one day.
  *
  * @property int $id
+ * @property int $company_id
  * @property int $vendor_id
  * @property int $site_id
  * @property Carbon $transaction_date
@@ -23,7 +24,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['vendor_id', 'site_id', 'transaction_date', 'data_status', 'article_count', 'total_qty', 'total_sales', 'dsr_import_id'])]
+#[Fillable(['company_id', 'vendor_id', 'site_id', 'transaction_date', 'data_status', 'article_count', 'total_qty', 'total_sales', 'dsr_import_id'])]
 class DsrReport extends Model
 {
     /** @return BelongsTo<Vendor, $this> */

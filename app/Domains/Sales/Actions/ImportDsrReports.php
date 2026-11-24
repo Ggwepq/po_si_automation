@@ -2,6 +2,7 @@
 
 namespace App\Domains\Sales\Actions;
 
+use App\Domains\Companies\Models\Company;
 use App\Domains\Sales\Data\DsrLineData;
 use App\Domains\Sales\Data\DsrReportData;
 use App\Domains\Sales\Models\Article;
@@ -16,7 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Saves DSR documents. Idempotent: each store-day is stored once, and
+ * Saves a company's DSR documents. Idempotent: each store-day is stored once per company, and
  * importing it again (e.g. a revised DSR from SM) replaces its lines instead of
  * adding to them. Everything runs in one transaction, so a failed import
  * leaves no partial data.
@@ -31,11 +32,11 @@ class ImportDsrReports
     ) {}
 
     /** @param list<DsrReportData> $reports */
-    public function handle(array $reports, string $fileName, ?User $user): DsrImport
+    public function handle(Company $company, array $reports, string $fileName, ?User $user): DsrImport
     {
         $this->rejectDuplicates($reports);
 
-        $import = DB::transaction(function () use ($reports, $fileName, $user): DsrImport {
+        $import = DB::transaction(function () use ($company, $reports, $fileName, $user): DsrImport {
             $vendorIds = $this->stores->vendorIds(array_map(
                 fn (DsrReportData $r) => ['code' => $r->vendorCode, 'name' => $r->vendorName],
                 $reports,
@@ -47,6 +48,7 @@ class ImportDsrReports
             $articleIds = $this->saveArticles($reports);
 
             $import = DsrImport::create([
+                'company_id' => $company->id,
                 'user_id' => $user?->id,
                 'file_name' => $fileName,
                 'report_count' => count($reports),
@@ -128,7 +130,8 @@ class ImportDsrReports
     private function saveReport(DsrReportData $report, int $vendorId, int $siteId, array $articleIds, DsrImport $import): bool
     {
         $lines = collect($report->lines);
-        $existing = DsrReport::where('vendor_id', $vendorId)
+        $existing = DsrReport::where('company_id', $import->company_id)
+            ->where('vendor_id', $vendorId)
             ->where('site_id', $siteId)
             ->whereDate('transaction_date', $report->transactionDate)
             ->first();
@@ -147,6 +150,7 @@ class ImportDsrReports
             ? tap($existing)->update($attributes)
             : DsrReport::create([
                 ...$attributes,
+                'company_id' => $import->company_id,
                 'vendor_id' => $vendorId,
                 'site_id' => $siteId,
                 'transaction_date' => $report->transactionDate,
@@ -157,6 +161,7 @@ class ImportDsrReports
         foreach ($lines->chunk(self::INSERT_CHUNK) as $chunk) {
             DsrLine::insert($chunk->map(fn (DsrLineData $line) => [
                 'dsr_report_id' => $saved->id,
+                'company_id' => $import->company_id,
                 'vendor_id' => $vendorId,
                 'site_id' => $siteId,
                 'article_id' => $articleIds[$line->articleCode],

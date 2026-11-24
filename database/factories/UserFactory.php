@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Domains\Companies\Models\Company;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -25,6 +26,8 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
+            'company_id' => Company::factory(),
+            'is_super_admin' => false,
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
@@ -34,6 +37,17 @@ class UserFactory extends Factory
             'two_factor_recovery_codes' => null,
             'two_factor_confirmed_at' => null,
         ];
+    }
+
+    /**
+     * A super admin manages companies and accounts and belongs to no company.
+     */
+    public function superAdmin(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'company_id' => null,
+            'is_super_admin' => true,
+        ]);
     }
 
     /**

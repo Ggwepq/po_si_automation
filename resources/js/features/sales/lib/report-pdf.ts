@@ -29,8 +29,10 @@ export type ReportPdfInput = {
     reconciliation?: DsrReconciliation;
     scope: string;
     generatedAt: string;
-    /** PNG data URL of the company logo. */
-    logo?: string;
+    /** The company the report belongs to, printed on the cover and in the notes. */
+    companyName: string;
+    /** Data URL of the company logo, with its pixel size for keeping proportions. */
+    logo?: { dataUrl: string; width: number; height: number };
     /** Opens the print dialog as soon as the PDF is shown. */
     autoPrint?: boolean;
 };
@@ -83,22 +85,30 @@ function coverBand(page: PdfLayout, input: ReportPdfInput, title: string) {
     doc.setFillColor(ACCENT).rect(0, 46, PAGE.width, 1.2, 'F');
 
     if (input.logo) {
+        const box = {
+            x: PAGE.width - PAGE.margin - 38,
+            y: 11,
+            width: 38,
+            height: 23,
+        };
+        const fit = fitInside(input.logo, box.width - 6, box.height - 5);
+
         doc.setFillColor('#ffffff').roundedRect(
-            PAGE.width - PAGE.margin - 38,
-            11,
-            38,
-            23,
+            box.x,
+            box.y,
+            box.width,
+            box.height,
             2,
             2,
             'F',
         );
         doc.addImage(
-            input.logo,
+            input.logo.dataUrl,
             'PNG',
-            PAGE.width - PAGE.margin - 35,
-            13.5,
-            32,
-            17.6,
+            box.x + (box.width - fit.width) / 2,
+            box.y + (box.height - fit.height) / 2,
+            fit.width,
+            fit.height,
         );
     }
 
@@ -114,11 +124,22 @@ function coverBand(page: PdfLayout, input: ReportPdfInput, title: string) {
         32,
     );
     doc.text(
-        `Prepared ${new Date(input.generatedAt).toLocaleString('en-PH')}  |  Park Solutions Inc.`,
+        `Prepared ${new Date(input.generatedAt).toLocaleString('en-PH')}  |  ${input.companyName}`,
         PAGE.margin,
         37,
     );
     page.y = 54;
+}
+
+/** Largest size with the logo's proportions that fits the box (logos range from wide wordmarks to square badges). */
+export function fitInside(
+    image: { width: number; height: number },
+    maxWidth: number,
+    maxHeight: number,
+): { width: number; height: number } {
+    const scale = Math.min(maxWidth / image.width, maxHeight / image.height);
+
+    return { width: image.width * scale, height: image.height * scale };
 }
 
 /** "+12.3% vs Sep 2026", coloured by direction. */

@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { BrandLogo } from '@/components/brand-logo';
+import { GroupLogo } from '@/components/brand-logo';
 import { home } from '@/routes';
 import type { AuthLayoutProps } from '@/types';
 
@@ -14,7 +14,7 @@ export default function AuthSimpleLayout({
                 <div className="grid gap-6">
                     <div className="grid justify-items-center gap-3 text-center">
                         <Link href={home()} className="rounded-lg">
-                            <BrandLogo className="w-40" />
+                            <GroupLogo className="w-48" />
                         </Link>
                         <h1 className="text-lg font-semibold">{title}</h1>
                         {description && (

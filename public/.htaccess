@@ -1,3 +1,9 @@
+# Hostinger: run this site on PHP 8.4 (the dependencies need >= 8.4.1), whatever
+# PHP version the hosting plan defaults to. Ignored by "php artisan serve".
+<FilesMatch "\.(php4|php5|php3|php2|php|phtml)$">
+    SetHandler application/x-lsphp84
+</FilesMatch>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes

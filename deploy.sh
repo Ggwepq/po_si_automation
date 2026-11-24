@@ -57,7 +57,7 @@ done
 
 # Used only before "composer install" has created vendor/ (e.g. on a fresh clone).
 # Afterwards, Composer's generated vendor/composer/platform_check.php is authoritative.
-MIN_PHP_VERSION_ID=80400   # composer.json: "php": "^8.4"
+MIN_PHP_VERSION_ID=80401   # 8.4.1: the minimum the locked dependencies require
 
 php_is_supported() {
     if [[ -f "$ROOT/vendor/composer/platform_check.php" ]]; then

@@ -145,7 +145,7 @@ return [
 
     'features' => [
         Features::resetPasswords(),
-        Features::emailVerification(),
+        // Email verification is off: accounts are created by an admin.
         Features::twoFactorAuthentication([
             'confirm' => true,
             'confirmPassword' => true,

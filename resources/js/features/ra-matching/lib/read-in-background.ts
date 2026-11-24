@@ -1,13 +1,13 @@
+import { inWorkerOrMainThread, runWorker } from '@/lib/run-worker';
 import { assertXlsxFile } from '@/lib/workbook-file';
 import { readRAWorkbook } from './ra-matching';
 import type { WorkerRequest } from './ra-workbook.worker';
 import type { WorkbookKind, WorkbookOf } from './types';
 
-type WorkerResponse<K extends WorkbookKind> =
-    | { result: WorkbookOf<K>; error?: undefined }
-    | { error: string; result?: undefined };
-
-/** Reads an RA or ICR workbook in a Web Worker, falling back to the main thread. */
+/**
+ * Reads an RA or ICR workbook in a Web Worker, or on the main thread when the
+ * worker cannot start.
+ */
 export async function readInBackground<K extends WorkbookKind>(
     file: File,
     kind: K,
@@ -15,45 +15,26 @@ export async function readInBackground<K extends WorkbookKind>(
     // Validate before copying a large file into the worker.
     assertXlsxFile(file, 100);
 
-    if (typeof Worker === 'undefined') {
-        return readRAWorkbook(file, kind);
-    }
+    return inWorkerOrMainThread(
+        async () => {
+            const bytes = await file.arrayBuffer();
+            const request: WorkerRequest = {
+                bytes,
+                kind,
+                name: file.name,
+                size: file.size,
+            };
 
-    const bytes = await file.arrayBuffer();
-
-    return new Promise((resolve, reject) => {
-        const worker = new Worker(
-            new URL('./ra-workbook.worker.ts', import.meta.url),
-            {
-                type: 'module',
-            },
-        );
-
-        worker.onmessage = ({ data }: MessageEvent<WorkerResponse<K>>) => {
-            worker.terminate();
-
-            if (data.error !== undefined) {
-                reject(new Error(data.error));
-            } else {
-                resolve(data.result);
-            }
-        };
-
-        worker.onerror = () => {
-            worker.terminate();
-            reject(
-                new Error(
-                    'The workbook could not be processed. Try a smaller workbook or reload the app.',
-                ),
+            return runWorker<WorkbookOf<K>>(
+                () =>
+                    new Worker(
+                        new URL('./ra-workbook.worker.ts', import.meta.url),
+                        { type: 'module' },
+                    ),
+                request,
+                [bytes],
             );
-        };
-
-        const request: WorkerRequest = {
-            bytes,
-            kind,
-            name: file.name,
-            size: file.size,
-        };
-        worker.postMessage(request, [bytes]);
-    });
+        },
+        () => readRAWorkbook(file, kind),
+    );
 }

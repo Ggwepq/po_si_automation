@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import { inWorkerOrMainThread, runWorker } from '@/lib/run-worker';
 import { MB } from '@/lib/workbook-file';
 import type { DsrWorkerRequest } from './dsr-file.worker';
 import { parseSalesWorkbook } from './parse-sales-file';
@@ -16,48 +17,28 @@ export function assertDsrFile(file: Pick<File, 'name' | 'size'>): void {
     }
 }
 
-type WorkerResponse =
-    | { result: ParsedSalesFile; error?: undefined }
-    | { error: string; result?: undefined };
-
-/** Parses a DSR export in a Web Worker, falling back to the main thread. */
+/**
+ * Parses a DSR export in a Web Worker so large files keep the page
+ * responsive, or on the main thread when the worker cannot start.
+ */
 export async function readDsrFile(file: File): Promise<ParsedSalesFile> {
     assertDsrFile(file);
 
     const bytes = await file.arrayBuffer();
 
-    if (typeof Worker === 'undefined') {
-        return parseSalesWorkbook(XLSX.read(bytes, { type: 'array' }));
-    }
-
-    return new Promise((resolve, reject) => {
-        const worker = new Worker(
-            new URL('./dsr-file.worker.ts', import.meta.url),
-            { type: 'module' },
-        );
-
-        worker.onmessage = ({ data }: MessageEvent<WorkerResponse>) => {
-            worker.terminate();
-
-            if (data.error !== undefined) {
-                reject(new Error(data.error));
-            } else {
-                resolve(data.result);
-            }
-        };
-
-        worker.onerror = () => {
-            worker.terminate();
-            reject(
-                new Error(
-                    'The file could not be read. Check that it is a DSR export from the vendor portal.',
-                ),
-            );
-        };
-
-        const request: DsrWorkerRequest = { bytes };
-        worker.postMessage(request, [bytes]);
-    });
+    return inWorkerOrMainThread(
+        // Copied, not transferred, so the fallback can still read the bytes.
+        () =>
+            runWorker<ParsedSalesFile>(
+                () =>
+                    new Worker(
+                        new URL('./dsr-file.worker.ts', import.meta.url),
+                        { type: 'module' },
+                    ),
+                { bytes } satisfies DsrWorkerRequest,
+            ),
+        async () => parseSalesWorkbook(XLSX.read(bytes, { type: 'array' })),
+    );
 }
 
 /** Splits rows into request-sized batches. */

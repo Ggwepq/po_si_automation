@@ -41,6 +41,8 @@ export function CompanyList({
                                             {company.name}
                                         </span>
                                         <span className="text-xs text-muted-foreground">
+                                            {company.accountNumber &&
+                                                `Account no. ${company.accountNumber} · `}
                                             {company.userCount === 1
                                                 ? '1 user'
                                                 : `${company.userCount} users`}

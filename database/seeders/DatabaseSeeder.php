@@ -17,18 +17,29 @@ class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
-        Company::firstOrCreate(['slug' => 'oroza-enterprise'], [
-            'name' => 'Oroza Enterprise',
-            'logo_path' => 'assets/logo/oroza-ent/p1-6.png',
-        ]);
-
-        $hnf = Company::firstOrCreate(['slug' => 'hnf'], [
-            'name' => 'HnF',
-            'logo_path' => 'assets/logo/hnf/p1-3.png',
-        ]);
+        $this->company('oroza-enterprise', 'Oroza Enterprise', '150551', 'assets/logo/oroza-ent/p1-6.png')
+            ->update(['workbook_tools' => true]);
+        $hnf = $this->company('hnf', 'HnF', '80369', 'assets/logo/hnf/p1-3.png');
+        $this->company('foodsecrets', 'Foodsecrets', '60291', null);
 
         $this->account('admin@test.com', 'Super Admin', null);
         $this->account('juan@gmail.com', 'Juan', $hnf);
+    }
+
+    /** Adds the company, or gives an existing one its account number if it has none yet. */
+    private function company(string $slug, string $name, string $accountNumber, ?string $logoPath): Company
+    {
+        $company = Company::firstOrCreate(['slug' => $slug], [
+            'name' => $name,
+            'account_number' => $accountNumber,
+            'logo_path' => $logoPath,
+        ]);
+
+        if ($company->account_number === null) {
+            $company->update(['account_number' => $accountNumber]);
+        }
+
+        return $company;
     }
 
     /** A null company makes a super admin. */

@@ -7,10 +7,17 @@ import {
     TableRow,
 } from '@/components/ui/table';
 
+const KIND_SHORT: Record<ImportRecord['kind'], string> = {
+    detail: 'DSR',
+    summary: 'DSR Summary',
+    csr: 'CSR',
+    clr: 'CLR',
+};
+
 export type ImportRecord = {
     id: number;
     fileName: string;
-    kind: 'detail' | 'summary';
+    kind: 'detail' | 'summary' | 'csr' | 'clr';
     reportCount: number;
     lineCount: number;
     replacedCount: number;
@@ -31,9 +38,7 @@ export function ImportHistory({ imports }: { imports: ImportRecord[] }) {
                             <TableHead>File</TableHead>
                             <TableHead>Type</TableHead>
                             <TableHead>Sales dates</TableHead>
-                            <TableHead className="text-right">
-                                Store-days
-                            </TableHead>
+                            <TableHead className="text-right">Rows</TableHead>
                             <TableHead className="text-right">Lines</TableHead>
                             <TableHead className="text-right">
                                 Replaced
@@ -51,9 +56,7 @@ export function ImportHistory({ imports }: { imports: ImportRecord[] }) {
                                     {record.fileName}
                                 </TableCell>
                                 <TableCell className="whitespace-nowrap">
-                                    {record.kind === 'summary'
-                                        ? 'DSR Summary'
-                                        : 'DSR'}
+                                    {KIND_SHORT[record.kind]}
                                 </TableCell>
                                 <TableCell>
                                     {record.firstDate === record.lastDate

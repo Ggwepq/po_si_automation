@@ -5,12 +5,12 @@ namespace App\Domains\Sales\Actions;
 use App\Domains\Companies\Models\Company;
 use App\Domains\Sales\Data\DsrLineData;
 use App\Domains\Sales\Data\DsrReportData;
-use App\Domains\Sales\Models\Article;
 use App\Domains\Sales\Models\DsrImport;
 use App\Domains\Sales\Models\DsrLine;
 use App\Domains\Sales\Models\DsrReport;
 use App\Domains\Sales\Support\SalesReportCache;
 use App\Domains\Sales\Support\StoreDirectory;
+use App\Domains\Sales\Support\VendorGuard;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -35,6 +35,7 @@ class ImportDsrReports
     public function handle(Company $company, array $reports, string $fileName, ?User $user): DsrImport
     {
         $this->rejectDuplicates($reports);
+        VendorGuard::check($company, array_map(fn (DsrReportData $r) => $r->vendorCode, $reports), 'reports');
 
         $import = DB::transaction(function () use ($company, $reports, $fileName, $user): DsrImport {
             $vendorIds = $this->stores->vendorIds(array_map(
@@ -45,7 +46,7 @@ class ImportDsrReports
                 fn (DsrReportData $r) => ['code' => $r->siteCode, 'name' => $r->siteName, 'company' => $r->company],
                 $reports,
             ));
-            $articleIds = $this->saveArticles($reports);
+            $articleIds = $this->stores->articleIds(collect($reports)->flatMap(fn (DsrReportData $r) => $r->lines));
 
             $import = DsrImport::create([
                 'company_id' => $company->id,
@@ -93,34 +94,6 @@ class ImportDsrReports
                 'reports' => 'The file contains the same store and date more than once: '.$duplicates->implode(', ').'.',
             ]);
         }
-    }
-
-    /**
-     * @param  list<DsrReportData>  $reports
-     * @return array<string, int> article id by article code
-     */
-    private function saveArticles(array $reports): array
-    {
-        $rows = collect($reports)
-            ->flatMap(fn (DsrReportData $r) => $r->lines)
-            ->keyBy(fn (DsrLineData $l) => $l->articleCode)
-            ->map(fn (DsrLineData $l) => [
-                'code' => $l->articleCode,
-                'description' => $l->description,
-                'barcode' => $l->barcode,
-                'uom' => $l->uom,
-            ])
-            ->values();
-
-        $ids = [];
-
-        foreach ($rows->chunk(self::INSERT_CHUNK) as $chunk) {
-            Article::upsert($chunk->all(), ['code'], ['description', 'barcode', 'uom']);
-            $ids += Article::whereIn('code', $chunk->pluck('code'))->pluck('id', 'code')->all();
-        }
-
-        /** @var array<string, int> $ids */
-        return $ids;
     }
 
     /**

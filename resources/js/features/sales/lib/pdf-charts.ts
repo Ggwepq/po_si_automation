@@ -90,9 +90,9 @@ export function donutWithLegend(
 ): number {
     const { radius = 15, format = pdfMoney } = options;
     const wide = width > 120;
-    const r = Math.min(radius, wide ? 17 : 12);
-    const colOffset = r + (wide ? 11 : 6.5);
-    const pieAreaWidth = wide ? Math.min(width * 0.56, 98) : width;
+    const r = Math.min(radius, wide ? 22 : 15);
+    const colOffset = r + (wide ? 9 : 4.5);
+    const pieAreaWidth = wide ? Math.min(width * 0.58, 104) : width;
     const cx = x + pieAreaWidth / 2;
     const padTop = 4;
     const cy = y + padTop + r;
@@ -104,7 +104,7 @@ export function donutWithLegend(
         minGap: 5.2,
         minY: y + 2.5,
         maxY: cy + r + 3,
-        elbowOffset: r * 0.2,
+        elbowOffset: r * 0.16,
     });
 
     if (!callouts.length) {

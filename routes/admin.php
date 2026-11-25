@@ -1,8 +1,15 @@
 <?php
 
+use App\Actions\Fortify\AuthenticateUser;
 use App\Http\Controllers\Admin\CompanyController;
 use App\Http\Controllers\Admin\CompanyUserController;
 use Illuminate\Support\Facades\Route;
+
+// Super admins log in here; the form posts to Fortify's login route with
+// portal=admin, which only accepts super admin accounts.
+Route::inertia('admin/login', 'auth/login', ['portal' => AuthenticateUser::ADMIN_PORTAL])
+    ->middleware('guest')
+    ->name('admin.login');
 
 // Super admin area: manage companies and their accounts. No company data here.
 Route::middleware(['auth', 'verified', 'super-admin'])

@@ -22,15 +22,15 @@ export default function PasswordInput({
             <button
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
-                className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-3 text-foreground/70 hover:text-primary focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-none"
+                className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-3 text-muted-foreground hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring focus-visible:outline-none"
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
                 aria-pressed={showPassword}
                 title={showPassword ? 'Hide password' : 'Show password'}
             >
                 {showPassword ? (
-                    <EyeOff className="size-[18px]" />
+                    <EyeOff className="size-4" />
                 ) : (
-                    <Eye className="size-[18px]" />
+                    <Eye className="size-4" />
                 )}
             </button>
         </div>

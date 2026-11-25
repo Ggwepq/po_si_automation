@@ -8,6 +8,7 @@ use App\Domains\Sales\Data\DsrSummaryData;
 use App\Domains\Sales\Models\DsrReport;
 use App\Domains\Sales\Models\DsrSummary;
 use App\Models\User;
+use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia as Assert;
 
 /** One DSR for store 0001 on 2026-11-03, imported for $company. */
@@ -106,8 +107,36 @@ it('refuses company pages to an account without a company', function () {
 
 it('shares the company brand with the page', function () {
     $this->actingAs(companyUser())
-        ->get(route('dashboard'))
+        ->get(route('sales.report'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('auth.isSuperAdmin', false)
-            ->where('auth.company.name', testCompany()->name));
+            ->where('auth.company.name', testCompany()->name)
+            // The sidebar's DSR status, before any import.
+            ->where('sales.lastDsrDate', null)
+            ->where('sales.importLimits.reportsPerBatch', 300));
+});
+
+it('only accepts DSRs for the company\'s own vendor number', function () {
+    $company = Company::factory()->create(['name' => 'Oroza Enterprise', 'account_number' => '150551']);
+
+    expect(fn () => importFor($company, '10.00', '80369'))
+        ->toThrow(ValidationException::class, "This file is for vendor 80369, but Oroza Enterprise's account number is 150551.");
+
+    importFor($company, '10.00', '150551');
+
+    expect(DsrReport::where('company_id', $company->id)->count())->toBe(1);
+});
+
+it('only accepts DSR Summaries for the company\'s own vendor number', function () {
+    $company = Company::factory()->create(['account_number' => '150551']);
+    $summary = fn (string $vendor) => app(ImportDsrSummaries::class)->handle($company, [DsrSummaryData::fromArray([
+        'vendor_code' => $vendor, 'vendor_name' => 'VENDOR', 'site_code' => '0001', 'site_name' => 'SVI STORE 0001',
+        'company' => 'SVI', 'transaction_date' => '2026-11-03', 'total_sales' => '10.00',
+    ])], 'DSRS_DETAIL.xlsx', null);
+
+    expect(fn () => $summary('80369'))->toThrow(ValidationException::class);
+
+    $summary('150551');
+
+    expect(DsrSummary::count())->toBe(1);
 });

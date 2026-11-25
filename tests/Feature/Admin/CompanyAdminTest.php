@@ -22,8 +22,8 @@ function newUserInput(array $overrides = []): array
     ];
 }
 
-it('sends guests to the login page', function () {
-    $this->get(route('admin.companies.index'))->assertRedirect(route('login'));
+it('sends guests to the admin login page', function () {
+    $this->get(route('admin.companies.index'))->assertRedirect(route('admin.login'));
 });
 
 it('is closed to company users', function () {
@@ -60,6 +60,7 @@ it('adds a company with a logo', function () {
     $this->actingAs(superAdmin())
         ->post(route('admin.companies.store'), [
             'name' => 'Herbs & Fruits',
+            'account_number' => '80369',
             'logo' => UploadedFile::fake()->image('logo.png', 200, 100),
         ])
         ->assertRedirect(route('admin.companies.show', 'herbs-fruits'));
@@ -67,17 +68,21 @@ it('adds a company with a logo', function () {
     $company = Company::sole();
 
     expect($company->slug)->toBe('herbs-fruits')
+        ->and($company->account_number)->toBe('80369')
         ->and($company->logo_path)->toStartWith('storage/company-logos/herbs-fruits-');
 
     Storage::disk('public')->assertExists(substr((string) $company->logo_path, strlen('storage/')));
 });
 
-it('keeps company names and slugs unique', function () {
-    Company::factory()->create(['name' => 'HnF', 'slug' => 'hnf']);
+it('keeps company names, account numbers and slugs unique', function () {
+    Company::factory()->create(['name' => 'HnF', 'slug' => 'hnf', 'account_number' => '80369']);
     $this->actingAs(superAdmin());
 
-    $this->post(route('admin.companies.store'), ['name' => 'HnF'])->assertSessionHasErrors('name');
-    $this->post(route('admin.companies.store'), ['name' => 'H n F!'])->assertSessionHasNoErrors();
+    $this->post(route('admin.companies.store'), ['name' => 'HnF', 'account_number' => '1'])->assertSessionHasErrors('name');
+    $this->post(route('admin.companies.store'), ['name' => 'Other', 'account_number' => '80369'])->assertSessionHasErrors('account_number');
+    $this->post(route('admin.companies.store'), ['name' => 'Other'])->assertSessionHasErrors('account_number');
+    $this->post(route('admin.companies.store'), ['name' => 'Other', 'account_number' => '80 369; DROP'])->assertSessionHasErrors('account_number');
+    $this->post(route('admin.companies.store'), ['name' => 'H n F!', 'account_number' => '60291'])->assertSessionHasNoErrors();
 
     expect(Company::where('name', 'H n F!')->sole()->slug)->toBe('h-n-f');
 });
@@ -88,6 +93,7 @@ it('rejects logos that are not images', function () {
 
     $this->post(route('admin.companies.store'), [
         'name' => 'HnF',
+        'account_number' => '80369',
         'logo' => UploadedFile::fake()->createWithContent('logo.svg', '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'),
     ])->assertSessionHasErrors('logo');
 

@@ -7,34 +7,51 @@ import {
     SidebarContent,
     SidebarFooter,
     SidebarHeader,
+    SidebarMenu,
+    SidebarMenuButton,
+    SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { adminNavItems, mainNavItems } from '@/features/workflows';
-import { dashboard } from '@/routes';
+import { SalesStatus } from '@/components/sales-status';
+import { adminNavSections, companyNavSections } from '@/features/workflows';
 import { index as adminCompanies } from '@/routes/admin/companies';
+import { report as salesReport } from '@/routes/sales';
 
 export function AppSidebar() {
-    const { isSuperAdmin } = usePage().props.auth;
+    const { isSuperAdmin, company } = usePage().props.auth;
 
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
-                <Link
-                    href={isSuperAdmin ? adminCompanies() : dashboard()}
-                    prefetch
-                    aria-label={
-                        isSuperAdmin ? 'Go to companies' : 'Go to dashboard'
-                    }
-                    className="rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
-                >
-                    <AppLogo />
-                </Link>
+                <SidebarMenu>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton size="lg" asChild>
+                            <Link
+                                href={
+                                    isSuperAdmin
+                                        ? adminCompanies()
+                                        : salesReport()
+                                }
+                                prefetch
+                            >
+                                <AppLogo />
+                            </Link>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                </SidebarMenu>
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={isSuperAdmin ? adminNavItems : mainNavItems} />
+                <NavMain
+                    sections={
+                        isSuperAdmin
+                            ? adminNavSections
+                            : companyNavSections(company)
+                    }
+                />
             </SidebarContent>
 
             <SidebarFooter>
+                <SalesStatus />
                 <NavUser />
             </SidebarFooter>
         </Sidebar>

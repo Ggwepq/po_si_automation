@@ -8,12 +8,12 @@ type Props = ComponentProps<typeof DsrImport>;
 export default function ImportDsrPage(props: Props) {
     return (
         <>
-            <Head title="Import DSR" />
+            <Head title="Import" />
             <DsrImport {...props} />
         </>
     );
 }
 
 ImportDsrPage.layout = {
-    breadcrumbs: [{ title: 'Import DSR', href: importRoute() }],
+    breadcrumbs: [{ title: 'Import', href: importRoute() }],
 };

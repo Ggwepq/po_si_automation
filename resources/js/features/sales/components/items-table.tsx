@@ -15,8 +15,9 @@ import type { PageSize } from '@/lib/paginate';
 import { cn } from '@/lib/utils';
 import { formatMoney, formatPercent, formatQty } from '../lib/format';
 import type { ItemSales } from '../lib/types';
+import { ProfitCells } from './profit-cells';
 
-type SortKey = 'sales' | 'qty' | 'averagePrice' | 'storeCount';
+type SortKey = 'sales' | 'qty' | 'averagePrice' | 'storeCount' | 'grossProfit';
 
 const SORTS: { key: SortKey; label: string }[] = [
     { key: 'qty', label: 'Qty sold' },
@@ -25,18 +26,26 @@ const SORTS: { key: SortKey; label: string }[] = [
     { key: 'storeCount', label: 'Stores' },
 ];
 
+const PROFIT_SORT = { key: 'grossProfit', label: 'Gross profit' } as const;
+
 /** Every item sold in the period, ranked; sortable and searchable. */
 export function ItemsTable({ items }: { items: ItemSales[] }) {
     const [sort, setSort] = useState<SortKey>('sales');
     const [query, setQuery] = useState('');
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState<PageSize>(15);
+    const hasCosts = items.some((item) => item.grossProfit !== null);
+    const sorts = hasCosts ? [...SORTS, PROFIT_SORT] : SORTS;
 
     const ranked = useMemo(() => {
         const needle = query.trim().toLowerCase();
 
         return [...items]
-            .sort((a, b) => b[sort] - a[sort])
+            .sort(
+                (a, b) =>
+                    (b[sort] ?? -Infinity) - (a[sort] ?? -Infinity) ||
+                    b.sales - a.sales,
+            )
             .map((item, index) => ({ ...item, rank: index + 1 }))
             .filter(
                 (item) =>
@@ -70,7 +79,7 @@ export function ItemsTable({ items }: { items: ItemSales[] }) {
                         <TableRow>
                             <TableHead className="w-12">#</TableHead>
                             <TableHead>Item</TableHead>
-                            {SORTS.map(({ key, label }) => (
+                            {sorts.map(({ key, label }) => (
                                 <TableHead key={key} className="text-right">
                                     <button
                                         type="button"
@@ -86,6 +95,11 @@ export function ItemsTable({ items }: { items: ItemSales[] }) {
                                     </button>
                                 </TableHead>
                             ))}
+                            {hasCosts && (
+                                <TableHead className="text-right">
+                                    Margin
+                                </TableHead>
+                            )}
                             <TableHead className="text-right">Share</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -116,6 +130,12 @@ export function ItemsTable({ items }: { items: ItemSales[] }) {
                                 <TableCell className="text-right tabular-nums">
                                     {item.storeCount}
                                 </TableCell>
+                                {hasCosts && (
+                                    <ProfitCells
+                                        grossProfit={item.grossProfit}
+                                        grossMargin={item.grossMargin}
+                                    />
+                                )}
                                 <TableCell className="text-right tabular-nums">
                                     {formatPercent(item.share)}
                                 </TableCell>
@@ -124,7 +144,7 @@ export function ItemsTable({ items }: { items: ItemSales[] }) {
                         {!pagination.visible.length && (
                             <TableRow>
                                 <TableCell
-                                    colSpan={7}
+                                    colSpan={hasCosts ? 9 : 7}
                                     className="py-10 text-center text-muted-foreground"
                                 >
                                     No items match.

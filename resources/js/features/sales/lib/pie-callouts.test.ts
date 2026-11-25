@@ -20,13 +20,14 @@ const sampleSlices: Slice[] = [
 describe('layoutPieCallouts', () => {
     it('places non-overlapping callouts with anchor, elbow and horizontal leader lines', () => {
         const callouts = layoutPieCallouts(sampleSlices, {
-            cx: 240,
-            cy: 125,
-            radius: 74,
-            columnOffset: 132,
-            minGap: 30,
-            minY: 22,
-            maxY: 228,
+            cx: 180,
+            cy: 114,
+            radius: 86,
+            columnOffset: 100,
+            minGap: 28,
+            minY: 18,
+            maxY: 210,
+            elbowOffset: 10,
         });
 
         expect(callouts).toHaveLength(8);
@@ -40,7 +41,7 @@ describe('layoutPieCallouts', () => {
             for (let i = 1; i < sideCallouts.length; i++) {
                 expect(
                     sideCallouts[i].labelY - sideCallouts[i - 1].labelY,
-                ).toBeGreaterThanOrEqual(29.9);
+                ).toBeGreaterThanOrEqual(27.9);
             }
 
             for (const c of sideCallouts) {

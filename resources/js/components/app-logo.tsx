@@ -1,31 +1,34 @@
 import { usePage } from '@inertiajs/react';
 import { CompanyLogo, GroupMark } from '@/components/brand-logo';
 
-/**
- * Sidebar brand: the user's company logo and name, or the Oroza Group mark
- * for super admins. Collapses to just the logo in icon mode.
- */
+/** Sidebar brand: the user's company, or Oroza Group for super admins. */
 export default function AppLogo() {
     const { company } = usePage().props.auth;
 
     return (
-        <div className="flex items-center gap-2.5 px-1.5 py-1 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+        <>
             {company ? (
                 <CompanyLogo
                     company={company}
-                    className="max-w-24 shrink-0 group-data-[collapsible=icon]:h-5"
+                    className="h-8 max-w-20 min-w-8 shrink-0"
                 />
             ) : (
-                <GroupMark className="shrink-0 group-data-[collapsible=icon]:size-5" />
+                <div className="flex aspect-square size-8 items-center justify-center rounded-md">
+                    <GroupMark className="size-8" />
+                </div>
             )}
-            <span className="grid text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                <span className="truncate font-semibold text-sidebar-foreground">
+            <div className="ml-1 grid flex-1 text-left text-sm">
+                <span className="truncate leading-tight font-semibold">
                     {company?.name ?? 'Oroza Group'}
                 </span>
                 <span className="truncate text-xs text-muted-foreground">
-                    {company ? 'Sales Management System' : 'Super admin'}
+                    {company
+                        ? company.accountNumber
+                            ? `SM vendor ${company.accountNumber}`
+                            : 'Sales'
+                        : 'Administration'}
                 </span>
-            </span>
-        </div>
+            </div>
+        </>
     );
 }

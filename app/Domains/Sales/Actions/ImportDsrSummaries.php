@@ -9,6 +9,7 @@ use App\Domains\Sales\Models\DsrImport;
 use App\Domains\Sales\Models\DsrSummary;
 use App\Domains\Sales\Support\SalesReportCache;
 use App\Domains\Sales\Support\StoreDirectory;
+use App\Domains\Sales\Support\VendorGuard;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -31,6 +32,7 @@ class ImportDsrSummaries
     public function handle(Company $company, array $summaries, string $fileName, ?User $user): DsrImport
     {
         $this->rejectDuplicates($summaries);
+        VendorGuard::check($company, array_map(fn (DsrSummaryData $s) => $s->vendorCode, $summaries), 'summaries');
 
         $import = DB::transaction(function () use ($company, $summaries, $fileName, $user): DsrImport {
             $vendorIds = $this->stores->vendorIds(array_map(

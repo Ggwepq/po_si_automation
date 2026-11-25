@@ -27,10 +27,12 @@ php artisan migrate --seed
 composer dev
 ```
 
-Open http://localhost:8000 and log in as `admin@test.com` (super admin) or
-`juan@gmail.com` (HnF), both with the password `password`. The seeder adds
-these sample accounts and the Oroza Enterprise and HnF companies; change the
-passwords before the app is reachable from the internet.
+Open http://localhost:8000 and log in as `juan@gmail.com` or account number
+`80369` (HnF), or as `admin@test.com` on http://localhost:8000/admin/login
+(super admin), all with the password `password`. The seeder adds these
+sample accounts and the Oroza Enterprise (150551), HnF (80369) and
+Foodsecrets (60291) companies; change the passwords before the app is
+reachable from the internet.
 
 > Run PHP commands from PowerShell, which uses Herd's PHP. Git Bash may find
 > XAMPP's older PHP first.
@@ -52,14 +54,18 @@ and is updated by merging `dev`. See [AGENTS.md](AGENTS.md#git).
 
 The app serves several companies of the Oroza Group. Each company's users
 see only that company's sales, imports and reports, under its own logo.
-Everyone logs in on the same login page (Oroza Group logo) and lands in their
-own company. Data imported before companies existed belongs to **Oroza
-Enterprise**.
+Data imported before companies existed belongs to **Oroza Enterprise**.
 
-Public sign-up is disabled. A **super admin** manages accounts under
-**Companies**: add a company (name and optional logo), open it, and add its
-users. Super admins only manage companies and users; they do not see company
-data.
+Each company has an **account number**: its SM Vendor Portal number (e.g.
+150551 for Oroza Enterprise). Accountants log in on `/login` with their
+account number or email and their password. The account number works only
+while the company has a single user; with several, each uses their email.
+A company can only import DSRs and DSR Summaries for its own vendor number.
+
+Public sign-up is disabled. A **super admin** logs in on `/admin/login` and
+manages accounts under **Companies**: add a company (name, account number
+and optional logo), open it, and add its users. Super admins only manage
+companies and users; they do not see company data.
 
 Accounts can also be created from the server. The command asks for the
 password, so it isn't saved in shell history:
@@ -74,7 +80,9 @@ Users can change their password and turn on two-factor authentication under
 
 ## Workflows
 
-Both tools process workbooks **in the browser**; uploaded files are never sent
+The PO & SI workflow and RA item matching are for Oroza Enterprise only: a
+company sees them when its `workbook_tools` flag is on (set for SM vendor
+150551 by the migration and the seeder). Both tools process workbooks **in the browser**; uploaded files are never sent
 to the server. Uploads stay available while you move between pages and are
 cleared by **Start over** or a page reload.
 
@@ -116,16 +124,26 @@ cleared by **Start over** or a page reload.
 
 ## Sales
 
+The sidebar's **Sales** menu has **Overview** (the sales report, also the home
+page after login), **Liquidation**, **Import** and **Product costs**. Under
+them, **Last DSR** shows the newest imported sales day: green when up to date,
+amber when DSRs are missing. **Import DSR** is also a button on the sales
+report and the Liquidation page; it opens the same import in a dialog, and
+the page refreshes with the new data.
+
 ### Import DSR
 
 1. In the SM Vendor Portal, open **Finance Documents → Daily Sales Report**,
    filter the dates you need, select the reports, and click **Export
    Document** (the file is usually named `DSR_DETAIL.xlsx`). **Export List**
    (`DSR_LIST.xlsx`) only has totals per store, so the app rejects it.
-2. In the app, go to **Sales → Import DSR** and choose the file. The app checks
-   that the item lines add up to the file's Grand Total and warns if not.
-3. Check the preview (dates, stores, item lines, total sales), then click
-   **Import**.
+2. In the app, go to **Sales → Import** (or click **Import DSR** on the
+   report) and choose the file. The app recognises the kind of export (DSR,
+   DSR Summary, CSR or CLR) and checks that its rows add up to the file's
+   Grand Total.
+3. **Review** what the file contains (dates or periods, stores, totals and
+   any warnings), then click **Import**. **Done** links to the report or the
+   Liquidation page.
 
 Re-importing the same store and date replaces it, so importing overlapping
 files or revised DSRs never counts sales twice. Large files (many months) are
@@ -134,7 +152,12 @@ file again is safe. Every import is listed with who imported it and when.
 
 ### Sales report
 
-**Sales → Sales report** opens on the month of the latest imported sales.
+**Sales → Overview** opens on the month of the latest imported sales. The
+date, filter and export bar stays at the top while scrolling. Under the totals
+and the sales trend, the report is split into tabs: **Overview** (highlights,
+top 10 items, share charts), **Items**, **Stores** and **Data check**
+(completeness and the month-end check; a dot on the tab means something needs
+attention). The PDF and printouts still include every section.
 
 - **Dates:** click the date button for quick choices (Latest sales day, Today,
   Yesterday, Last 7/30 days, This/Last week, This/Last month, This quarter,
@@ -178,7 +201,21 @@ file again is safe. Every import is listed with who imported it and when.
     the same. The PDF is built in the browser; amounts are shown as "PHP"
     because PDF fonts lack the peso sign.
 
-- **Excel** downloads every section as a separate sheet for further analysis.
+- **Excel** offers two downloads:
+    - **Sales status report**: the accountants' "Sales Status Report"
+      workbook (same layout, colours and formulas as the H&F and AUTOMAT
+      files), filled from the DSRs: each item's quantity and sales per day
+      and per store, a Total row, blank signature lines, and a **YEARLY
+      REPORT** sheet with the year by month. Periods over three months are
+      shown by month.
+    - **ModCon report**: the ModCon workbook (same layout as MODCON SALES
+      REPORT.xlsx) for the period's year: one sheet per store chain (SSM,
+      SVI, SMCO) with each item's sales and quantity per half-month (1st–15th
+      and 16th–end, by transaction date), the year's amount, 12% VAT, total
+      and quantity, and empty S.I./R.A. rows to fill in; a **TOTAL PER
+      COMPANY** sheet adding the chains up with formulas; and, for a monthly
+      report, the month's sheet first.
+    - **Data for analysis**: every report section as a plain sheet.
 - **Data completeness** (on screen only, not printed): a store × day grid of
   which DSRs are imported for the period, checked up to yesterday because SM
   posts each day's DSR the next day. Days with no DSR from _any_ store are
@@ -195,8 +232,7 @@ file again is safe. Every import is listed with who imported it and when.
 ### DSR Summary (month-end check)
 
 In the vendor portal, open **DSR Summary**, choose the month and export it
-(the file is usually named `DSRS_DETAIL.xlsx`). Import it on **Sales → Import
-DSR** like a DSR; the app recognises it. The Summary never adds to sales; it
+(the file is usually named `DSRS_DETAIL.xlsx`). Import it on **Sales → Import** like a DSR; the app recognises it. The Summary never adds to sales; it
 is only used for the month-end check and completeness. Re-importing it
 replaces SM's figures, so import it again whenever SM revises a month.
 
@@ -206,12 +242,64 @@ replaces SM's figures, so import it again whenever SM revises a month.
    today), or import a whole month at once (portal: **Transaction Date** =
    the month).
 2. After the month ends, import SM's **DSR Summary** for that month.
-3. Open **Sales report → Month**, check **Data completeness** shows no red
+   Each half-month, import the **CLR** and **CSR**, check the Liquidation
+   page's DSR check, and record SM's payments as they arrive.
+3. Open **Overview → Month**, check **Data completeness** shows no red
    days and the **Month-end check** says the month matches, then use
    **Excel**, **View PDF** or **Print** to share it.
 
-The DSR has no cost prices, categories, stock or time of sale, so profit,
-category, inventory and hourly reports are not possible from it.
+### Liquidation (what SM owes you)
+
+SM settles each half-month (1st–15th, 16th–end) per chain head office
+("countering center": SVI, SSM, SMCo). From the vendor portal, export:
+
+- **Consolidated Liquidation Report** (`CLR_DETAIL.xlsx`): per head office and
+  period, each store's sales, 12% VAT, the amount payable, 1% expanded
+  withholding tax (EWT) and the **net amount due**.
+- **Consolidated Sales Report** (`CSR_DETAIL.xlsx`): SM's sales per store and
+  item for the period.
+
+Import both on **Sales → Import**. Importing a period again replaces SM's
+figures and keeps the payments recorded for it. **Sales → Liquidation** then
+shows, per year:
+
+- Totals: net amount due, received, still to receive, and the DSR check.
+- Charts: half-month settlements (received vs still to receive), net amount
+  due share by chain, and liquidated sales share by store.
+- One row per period and head office: sales, EWT, net due, **DSR check**
+  (✓ when your imported DSRs for those stores and days add up to SM's figure,
+  within ₱1; the difference otherwise; "No DSRs yet" when none are imported),
+  received and status (**Unpaid**, **Short**, **Paid**, **Overpaid**).
+- Click a row for each store against your DSRs (with the days that have no
+  DSR), **Compare items** (with the CSR imported: SM's quantity and sales per
+  item against the DSRs, differences highlighted), and the payments.
+- **Record payment** saves an amount received, its date and the check or
+  reference number from SM's Remittance Advice. Several payments can be
+  recorded for one period; a wrong one can be removed.
+- **Withholding tax by month**: EWT per chain and month, to check SM's BIR
+  Form 2307 certificates.
+- **Excel**: the year's liquidations, stores against DSRs, and EWT by month,
+  with totals.
+
+### Gross profit
+
+The DSR has no costs, so each company enters its own on **Sales → Product
+costs**: a cost per unit and the date it starts. Each sale uses the cost in
+effect on its date, so a new cost leaves earlier months unchanged. The page
+shows how many items have a cost and what share of the last 60 days' sales
+they cover, lists items without a cost first (biggest sellers on top), and
+shows margins under 15% in red. Type a cost straight into the table (it
+starts on the date chosen above the table) or use the history button for
+earlier costs and dates. To set many
+at once, use **Import cost sheet** with any Excel file that has an "ARTICLE
+CODE" column (e.g. H&F's "cost finished product" sheet): the "FG" column is
+picked as the cost when there is one, and you choose the start date. Once costs
+exist, the sales report shows gross profit and margin (summary card, item and
+store tables, and the "Data for analysis" Excel). Sales of items without a cost
+are left out of gross profit; the card says what share of sales has a cost.
+
+The DSR has no categories, stock or time of sale, so category, inventory and
+hourly reports are not possible from it.
 
 ## Project layout
 

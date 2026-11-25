@@ -54,14 +54,18 @@ export function SharePie({
     slices: Slice[];
     valueFormat?: (v: number) => string;
 }) {
+    const cx = 180;
+    const cy = 114;
+    const radius = 86;
     const callouts = layoutPieCallouts(slices, {
-        cx: 240,
-        cy: 124,
-        radius: 68,
-        columnOffset: 118,
-        minGap: 32,
-        minY: 24,
-        maxY: 224,
+        cx,
+        cy,
+        radius,
+        columnOffset: 100,
+        minGap: 28,
+        minY: 18,
+        maxY: 210,
+        elbowOffset: 10,
     });
 
     if (!callouts.length) {
@@ -75,19 +79,19 @@ export function SharePie({
     return (
         <div className="grid gap-3">
             <svg
-                viewBox="0 0 480 248"
+                viewBox="0 0 360 228"
                 role="img"
                 aria-label="Sales share pie chart"
-                className="mx-auto h-60 w-full max-w-[520px] overflow-visible select-none"
+                className="mx-auto aspect-[360/228] w-full max-w-[440px] overflow-visible select-none"
             >
                 <g>
                     {callouts.map((c) => (
                         <path
                             key={c.slice.name}
                             d={pieSectorPath(
-                                240,
-                                124,
-                                68,
+                                cx,
+                                cy,
+                                radius,
                                 c.startAngle,
                                 c.endAngle,
                             )}

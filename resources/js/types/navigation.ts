@@ -13,11 +13,8 @@ export type NavItem = {
     isActive?: boolean;
 };
 
-/** A sidebar entry that expands to show related pages. */
-export type NavGroup = {
-    title: string;
-    icon?: LucideIcon | null;
+/** A labelled group of sidebar links, e.g. "Sales". */
+export type NavSection = {
+    label: string;
     items: NavItem[];
 };
-
-export type NavEntry = NavItem | NavGroup;

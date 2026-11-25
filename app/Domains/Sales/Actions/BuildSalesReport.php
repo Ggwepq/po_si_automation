@@ -7,6 +7,7 @@ use App\Domains\Sales\Data\ReportPeriod;
 use App\Domains\Sales\Models\Article;
 use App\Domains\Sales\Models\DsrLine;
 use App\Domains\Sales\Models\Site;
+use App\Domains\Sales\Support\LineCost;
 use App\Domains\Sales\Support\SalesReportCache;
 use App\Domains\Sales\Support\SalesScope;
 use Carbon\CarbonImmutable;
@@ -21,9 +22,9 @@ use Illuminate\Support\Collection;
  * date + site), so the cost grows with the number of stores and items in the
  * period, not with the size of the table.
  *
- * @phpstan-type StoreSales array{code: string, name: string, company: string, sales: float, qty: float, itemCount: int, share: float, topItem: string|null}
+ * @phpstan-type StoreSales array{code: string, name: string, company: string, sales: float, qty: float, itemCount: int, share: float, topItem: string|null, grossProfit: float|null, grossMargin: float|null, costCoverage: float}
  * @phpstan-type CompanySales array{company: string, sales: float, qty: float, storeCount: int, share: float}
- * @phpstan-type ItemSales array{code: string, description: string, uom: string|null, qty: float, sales: float, share: float, averagePrice: float, storeCount: int}
+ * @phpstan-type ItemSales array{code: string, description: string, uom: string|null, qty: float, sales: float, share: float, averagePrice: float, storeCount: int, grossProfit: float|null, grossMargin: float|null, costCoverage: float}
  */
 class BuildSalesReport
 {
@@ -73,7 +74,7 @@ class BuildSalesReport
         $row = $lines->toBase()->selectRaw(
             'COALESCE(SUM(total_sales), 0) AS sales, COALESCE(SUM(sales_qty), 0) AS qty, '.
             'COUNT(DISTINCT article_id) AS items, COUNT(DISTINCT site_id) AS stores, '.
-            'COUNT(DISTINCT transaction_date) AS days'
+            'COUNT(DISTINCT transaction_date) AS days, '.LineCost::COLUMNS
         )->first();
 
         $sales = $this->money($row->sales ?? 0);
@@ -86,6 +87,7 @@ class BuildSalesReport
             'storeCount' => (int) ($row->stores ?? 0),
             'salesDays' => $days,
             'averageDailySales' => $days > 0 ? round($sales / $days, 2) : 0.0,
+            ...LineCost::profit($row->cost ?? null, $row->costed_sales ?? 0, $sales),
         ];
     }
 
@@ -98,7 +100,7 @@ class BuildSalesReport
     private function byStore(Builder $lines): Collection
     {
         $totals = (clone $lines)->toBase()
-            ->selectRaw('site_id, SUM(total_sales) AS sales, SUM(sales_qty) AS qty, COUNT(DISTINCT article_id) AS items')
+            ->selectRaw('site_id, SUM(total_sales) AS sales, SUM(sales_qty) AS qty, COUNT(DISTINCT article_id) AS items, '.LineCost::COLUMNS)
             ->groupBy('site_id')
             ->get();
 
@@ -128,6 +130,7 @@ class BuildSalesReport
                     'itemCount' => (int) $row->items,
                     'share' => $this->share($sales, $grandTotal),
                     'topItem' => is_string($topItem) ? $topItem : null,
+                    ...LineCost::profit($row->cost, $row->costed_sales, $sales),
                 ];
             })
             ->sortByDesc('sales')
@@ -164,7 +167,7 @@ class BuildSalesReport
     private function byItem(Builder $lines): array
     {
         $totals = $lines->toBase()
-            ->selectRaw('article_id, SUM(sales_qty) AS qty, SUM(total_sales) AS sales, COUNT(DISTINCT site_id) AS stores')
+            ->selectRaw('article_id, SUM(sales_qty) AS qty, SUM(total_sales) AS sales, COUNT(DISTINCT site_id) AS stores, '.LineCost::COLUMNS)
             ->groupBy('article_id')
             ->get();
 
@@ -186,6 +189,7 @@ class BuildSalesReport
                     'share' => $this->share($sales, $grandTotal),
                     'averagePrice' => $qty != 0.0 ? round($sales / $qty, 2) : 0.0,
                     'storeCount' => (int) $row->stores,
+                    ...LineCost::profit($row->cost, $row->costed_sales, $sales),
                 ];
             })
             ->sortByDesc('sales')

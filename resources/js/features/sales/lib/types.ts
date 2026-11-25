@@ -48,8 +48,63 @@ export type ParsedDsrSummaryFile = {
     warnings: string[];
 };
 
-/** Either export the Import page accepts. */
-export type ParsedSalesFile = ParsedDsrFile | ParsedDsrSummaryFile;
+/** One store's items for a half-month, from SM's Consolidated Sales Report. */
+export type CsrStoreInput = {
+    vendor_code: string;
+    vendor_name: string;
+    site_code: string;
+    site_name: string;
+    company: string;
+    /** YYYY-MM-DD */
+    period_start: string;
+    period_end: string;
+    lines: DsrLineInput[];
+};
+
+export type ParsedCsrFile = {
+    kind: 'csr';
+    stores: CsrStoreInput[];
+    warnings: string[];
+};
+
+/** What one SM chain head office owes for a half-month (Consolidated Liquidation Report). */
+export type LiquidationInput = {
+    vendor_code: string;
+    vendor_name: string;
+    /** "Countering center", e.g. 8888 SVI HEADOFFICE. */
+    center_code: string;
+    center_name: string;
+    /** Store chain, e.g. SVI. */
+    chain: string;
+    payment_term: string | null;
+    period_start: string;
+    period_end: string;
+    amount_payable: string;
+    ewt: string;
+    net_due: string;
+    stores: {
+        site_code: string;
+        site_name: string;
+        company: string;
+        vat_exempt_sales: string;
+        vatable_sales: string;
+        vat_amount: string;
+        total_sales: string;
+    }[];
+};
+
+export type ParsedClrFile = {
+    kind: 'clr';
+    liquidations: LiquidationInput[];
+    warnings: string[];
+};
+
+/** Any export the Import page accepts. */
+export type ParsedSalesFile =
+    | ParsedDsrFile
+    | ParsedDsrSummaryFile
+    | ParsedCsrFile
+    | ParsedClrFile;
 
 export type PeriodType =
     | 'daily'
@@ -75,6 +130,11 @@ export type SalesTotals = {
     storeCount: number;
     salesDays: number;
     averageDailySales: number;
+    /** Null until some sold items have a cost. Uses only the costed sales. */
+    grossProfit: number | null;
+    grossMargin: number | null;
+    /** Share of sales whose items had a cost on the day sold (0-100). */
+    costCoverage: number;
 };
 
 export type StoreSales = {
@@ -86,6 +146,11 @@ export type StoreSales = {
     itemCount: number;
     share: number;
     topItem: string | null;
+    /** Null until some sold items have a cost. Uses only the costed sales. */
+    grossProfit: number | null;
+    grossMargin: number | null;
+    /** Share of sales whose items had a cost on the day sold (0-100). */
+    costCoverage: number;
 };
 
 export type CompanySales = {
@@ -105,6 +170,11 @@ export type ItemSales = {
     share: number;
     averagePrice: number;
     storeCount: number;
+    /** Null until some sold items have a cost. Uses only the costed sales. */
+    grossProfit: number | null;
+    grossMargin: number | null;
+    /** Share of sales whose items had a cost on the day sold (0-100). */
+    costCoverage: number;
 };
 
 export type TrendPoint = { date: string; sales: number; qty: number };
@@ -115,6 +185,25 @@ export type SalesReport = {
     byStore: StoreSales[];
     items: ItemSales[];
     trend: { grouping: 'day' | 'month'; points: TrendPoint[] };
+};
+
+/** Quantity and sales per item, in the order of `SalesMatrix.items`. */
+export type MatrixRow = { qty: number[]; sales: number[] };
+
+/** Item grids by day (or month) and by store, for the Excel export. */
+export type SalesMatrix = {
+    grouping: 'day' | 'month';
+    items: { code: string; description: string; uom: string | null }[];
+    byDate: (MatrixRow & { date: string })[];
+    byStore: (MatrixRow & { code: string; name: string; company: string })[];
+};
+
+/** A year of ModCon billing: per store chain, each item's sales and quantity per half-month (24 halves). */
+export type ModconSummary = {
+    year: number;
+    items: { code: string; description: string }[];
+    /** amount[item][half] and qty[item][half]. */
+    chains: { chain: string; amount: number[][]; qty: number[][] }[];
 };
 
 export type ReportFilters = {
@@ -196,5 +285,91 @@ export type DsrReconciliation = {
         detail: string;
         difference: string;
         issues: number;
+    }[];
+};
+
+/** An item on the Product costs page. */
+export type ProductCost = {
+    code: string;
+    description: string;
+    uom: string | null;
+    /** Cost in effect today, per unit. */
+    currentCost: number | null;
+    /** What SM paid per unit on the item's latest DSR day. */
+    smPrice: number | null;
+    /** (SM price - cost) / SM price, in %. */
+    margin: number | null;
+    /** Sales over the last 60 days of DSRs, to weigh what the costs cover. */
+    recentSales: number;
+    history: {
+        id: number;
+        unitCost: number;
+        /** YYYY-MM-DD */
+        effectiveFrom: string;
+        setBy: string | null;
+        upcoming: boolean;
+    }[];
+};
+
+export type LiquidationStatus = 'unpaid' | 'short' | 'paid' | 'over';
+
+/** One SM head office's liquidation for a half-month, checked against the DSRs. */
+export type Liquidation = {
+    id: number;
+    /** YYYY-MM-DD */
+    periodStart: string;
+    periodEnd: string;
+    centerCode: string;
+    centerName: string;
+    chain: string;
+    paymentTerm: string | null;
+    /** Sales before VAT, as SM liquidated them. */
+    sales: number;
+    vat: number;
+    amountPayable: number;
+    ewt: number;
+    netDue: number;
+    /** Imported DSR sales for the same stores and days. */
+    dsrSales: number;
+    dsrDifference: number;
+    dsrMatches: boolean;
+    csrImported: boolean;
+    paid: number;
+    balance: number;
+    status: LiquidationStatus;
+    payments: {
+        id: number;
+        paidOn: string;
+        reference: string | null;
+        amount: number;
+        recordedBy: string | null;
+    }[];
+    stores: {
+        code: string;
+        name: string;
+        smSales: number;
+        vat: number;
+        totalSales: number;
+        dsrSales: number;
+        difference: number;
+        /** Days in the period (up to today) without an imported DSR. */
+        missingDays: string[];
+        csrSales: number | null;
+    }[];
+};
+
+/** Per store, SM's Consolidated Sales Report against the DSRs, item by item. */
+export type LiquidationItems = {
+    stores: {
+        code: string;
+        name: string;
+        items: {
+            code: string;
+            description: string;
+            csrQty: number | null;
+            csrSales: number | null;
+            dsrQty: number;
+            dsrSales: number;
+        }[];
     }[];
 };

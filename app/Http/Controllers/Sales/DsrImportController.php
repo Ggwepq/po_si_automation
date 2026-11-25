@@ -3,10 +3,14 @@
 namespace App\Http\Controllers\Sales;
 
 use App\Domains\Companies\Models\Company;
+use App\Domains\Sales\Actions\ImportClr;
+use App\Domains\Sales\Actions\ImportCsr;
 use App\Domains\Sales\Actions\ImportDsrReports;
 use App\Domains\Sales\Actions\ImportDsrSummaries;
 use App\Domains\Sales\Models\DsrImport;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Sales\ImportClrRequest;
+use App\Http\Requests\Sales\ImportCsrRequest;
 use App\Http\Requests\Sales\ImportDsrRequest;
 use App\Http\Requests\Sales\ImportDsrSummaryRequest;
 use Illuminate\Http\RedirectResponse;
@@ -37,11 +41,6 @@ class DsrImportController extends Controller
                     'importedBy' => $import->user?->name,
                     'importedAt' => $import->created_at?->toIso8601String(),
                 ]),
-            'limits' => [
-                'reportsPerBatch' => ImportDsrRequest::MAX_REPORTS,
-                'linesPerReport' => ImportDsrRequest::MAX_LINES,
-                'summariesPerBatch' => ImportDsrSummaryRequest::MAX_SUMMARIES,
-            ],
         ]);
     }
 
@@ -65,6 +64,32 @@ class DsrImportController extends Controller
         Inertia::flash('importResult', [
             'reportCount' => $result->report_count,
             'lineCount' => 0,
+            'replacedCount' => $result->replaced_count,
+        ]);
+
+        return back();
+    }
+
+    public function storeCsr(ImportCsrRequest $request, ImportCsr $import): RedirectResponse
+    {
+        $result = $import->handle($this->company($request), $request->stores(), $request->string('file_name')->toString(), $request->user());
+
+        Inertia::flash('importResult', [
+            'reportCount' => $result->report_count,
+            'lineCount' => $result->line_count,
+            'replacedCount' => $result->replaced_count,
+        ]);
+
+        return back();
+    }
+
+    public function storeClr(ImportClrRequest $request, ImportClr $import): RedirectResponse
+    {
+        $result = $import->handle($this->company($request), $request->liquidations(), $request->string('file_name')->toString(), $request->user());
+
+        Inertia::flash('importResult', [
+            'reportCount' => $result->report_count,
+            'lineCount' => $result->line_count,
             'replacedCount' => $result->replaced_count,
         ]);
 

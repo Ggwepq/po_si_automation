@@ -159,7 +159,8 @@ export function layoutPieCallouts(
 
         const sign = side === 'right' ? 1 : -1;
         const labelX = cx + sign * columnOffset;
-        const minHoriz = Math.max(radius * 0.2, 6);
+        const rimGap = Math.max(columnOffset - radius, 4);
+        const minHoriz = Math.min(Math.max(radius * 0.12, 4), rimGap * 0.55);
         const minOutward = Math.max(radius * 0.06, 2);
 
         return group.map((item, i) => {

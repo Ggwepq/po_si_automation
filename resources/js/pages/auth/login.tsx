@@ -7,33 +7,47 @@ import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { store } from '@/routes/login';
 
-export default function Login({ status }: { status?: string }) {
+type Props = {
+    status?: string;
+    /** Set on the admin login page, which only accepts super admins. */
+    portal?: 'admin';
+};
+
+export default function Login({ status, portal }: Props) {
+    const isAdmin = portal === 'admin';
+
     return (
         <>
-            <Head title="Log in" />
-
-            {status && (
-                <div className="text-center text-sm font-medium text-green-600">
-                    {status}
-                </div>
-            )}
+            <Head title={isAdmin ? 'Admin log in' : 'Log in'} />
 
             <Form
                 {...store.form()}
                 resetOnSuccess={['password']}
-                className="grid gap-5"
+                className="flex flex-col gap-6"
             >
                 {({ processing, errors }) => (
-                    <>
+                    <div className="grid gap-6">
+                        {isAdmin && (
+                            <input type="hidden" name="portal" value="admin" />
+                        )}
+
                         <div className="grid gap-2">
-                            <Label htmlFor="email">Email</Label>
+                            <Label htmlFor="email">
+                                {isAdmin
+                                    ? 'Email address'
+                                    : 'Account number or email'}
+                            </Label>
                             <Input
                                 id="email"
-                                type="email"
+                                type={isAdmin ? 'email' : 'text'}
                                 name="email"
                                 required
                                 autoFocus
-                                autoComplete="email"
+                                tabIndex={1}
+                                autoComplete="username"
+                                placeholder={
+                                    isAdmin ? 'email@example.com' : '150551'
+                                }
                             />
                             <InputError message={errors.email} />
                         </div>
@@ -44,27 +58,43 @@ export default function Login({ status }: { status?: string }) {
                                 id="password"
                                 name="password"
                                 required
+                                tabIndex={2}
                                 autoComplete="current-password"
+                                placeholder="Password"
                             />
                             <InputError message={errors.password} />
                         </div>
 
                         <Button
                             type="submit"
-                            className="mt-2 w-full"
+                            className="mt-4 w-full"
+                            tabIndex={3}
                             disabled={processing}
                             data-test="login-button"
                         >
                             {processing && <Spinner />}
                             Log in
                         </Button>
-                    </>
+                    </div>
                 )}
             </Form>
+
+            {status && (
+                <div className="mb-4 text-center text-sm font-medium text-green-600">
+                    {status}
+                </div>
+            )}
+
+            {isAdmin && (
+                <p className="text-center text-sm text-muted-foreground">
+                    Super admin access only
+                </p>
+            )}
         </>
     );
 }
 
 Login.layout = {
-    title: 'Log in',
+    title: 'Log in to your account',
+    description: 'Enter your account number or email and password below',
 };

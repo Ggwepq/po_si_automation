@@ -2,6 +2,11 @@
 
 namespace App\Http\Middleware;
 
+use App\Domains\Sales\Models\DsrReport;
+use App\Http\Requests\Sales\ImportClrRequest;
+use App\Http\Requests\Sales\ImportCsrRequest;
+use App\Http\Requests\Sales\ImportDsrRequest;
+use App\Http\Requests\Sales\ImportDsrSummaryRequest;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -47,7 +52,25 @@ class HandleInertiaRequests extends Middleware
                 // Branding for the sidebar and reports; null for super admins.
                 'company' => $user instanceof User ? $user->company?->toBrand() : null,
             ],
+            // Company users only: the sidebar's "last DSR" date and the batch
+            // sizes the import dialog (on any page) sends.
+            'sales' => fn () => $user instanceof User && $user->company_id !== null ? [
+                'lastDsrDate' => self::date(DsrReport::where('company_id', $user->company_id)->max('transaction_date')),
+                'importLimits' => [
+                    'reportsPerBatch' => ImportDsrRequest::MAX_REPORTS,
+                    'linesPerReport' => ImportDsrRequest::MAX_LINES,
+                    'summariesPerBatch' => ImportDsrSummaryRequest::MAX_SUMMARIES,
+                    'csrStoresPerBatch' => ImportCsrRequest::MAX_STORES,
+                    'liquidationsPerBatch' => ImportClrRequest::MAX_LIQUIDATIONS,
+                ],
+            ] : null,
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
+    }
+
+    /** Y-m-d; some databases return a date column's MAX() with a time. */
+    private static function date(mixed $value): ?string
+    {
+        return is_string($value) ? substr($value, 0, 10) : null;
     }
 }

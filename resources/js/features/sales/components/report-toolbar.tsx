@@ -1,7 +1,19 @@
 import { router } from '@inertiajs/react';
-import { Download, FileText, Printer, RotateCcw } from 'lucide-react';
+import {
+    ChevronDown,
+    Download,
+    FileText,
+    Printer,
+    RotateCcw,
+} from 'lucide-react';
 import { MultiSelectFilter } from '@/components/multi-select-filter';
 import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { report as reportRoute } from '@/routes/sales';
 import { reportUrl } from '../lib/report-query';
 import type { ReportQuery } from '../lib/report-query';
@@ -11,16 +23,25 @@ import type {
     ReportSelection,
 } from '../lib/types';
 import { DateRangePicker } from './date-range-picker';
+import { ImportSalesDialog } from './import/import-sales-dialog';
 import type { PeriodChange } from './date-range-picker';
 
 type Props = {
     period: ReportPeriod;
     filters: ReportFilters;
     selected: ReportSelection;
+    /** The accountants' Sales Status Report workbook. */
     onExport: () => void;
+    /** The ModCon workbook: sales per store chain and half-month, with VAT. */
+    onExportModcon: () => void;
+    /** Every report section as plain sheets, for analysis. */
+    onExportData: () => void;
+    excelBusy: boolean;
     /** Opens the PDF report; with `print`, also opens the print dialog. */
     onPdf: (print: boolean) => void;
     pdfBusy: boolean;
+    importOpen: boolean;
+    onImportOpenChange: (open: boolean) => void;
 };
 
 /**
@@ -33,8 +54,13 @@ export function ReportToolbar({
     filters,
     selected,
     onExport,
+    onExportModcon,
+    onExportData,
+    excelBusy,
     onPdf,
     pdfBusy,
+    importOpen,
+    onImportOpenChange,
 }: Props) {
     const current: ReportQuery = {
         period: period.type,
@@ -130,14 +156,35 @@ export function ReportToolbar({
             )}
 
             <div className="ml-auto flex flex-wrap gap-2">
-                <Button
+                <ImportSalesDialog
                     variant="outline"
-                    size="sm"
-                    className="h-9"
-                    onClick={onExport}
-                >
-                    <Download /> Excel
-                </Button>
+                    open={importOpen}
+                    onOpenChange={onImportOpenChange}
+                />
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-9"
+                            disabled={excelBusy}
+                        >
+                            <Download /> {excelBusy ? 'Preparing…' : 'Excel'}
+                            <ChevronDown />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onSelect={onExport}>
+                            Sales status report
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={onExportModcon}>
+                            ModCon report
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onSelect={onExportData}>
+                            Data for analysis
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
                 <Button
                     size="sm"
                     className="h-9"

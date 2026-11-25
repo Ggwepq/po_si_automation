@@ -17,6 +17,9 @@ const store = (name: string, sales: number): StoreSales => ({
     itemCount: 1,
     share: 0,
     topItem: null,
+    grossProfit: null,
+    grossMargin: null,
+    costCoverage: 0,
 });
 
 const item = (
@@ -31,6 +34,9 @@ const item = (
     sales,
     share: 0,
     averagePrice: 10,
+    grossProfit: null,
+    grossMargin: null,
+    costCoverage: 0,
     storeCount,
 });
 
@@ -94,6 +100,9 @@ describe('CEO metrics', () => {
             storeCount: 4,
             salesDays: 2,
             averageDailySales: 500,
+            grossProfit: null,
+            grossMargin: null,
+            costCoverage: 0,
         };
 
         expect(unitEconomics(totals)).toEqual({

@@ -9,6 +9,9 @@ const totals = (sales: number): SalesTotals => ({
     storeCount: 3,
     salesDays: 1,
     averageDailySales: sales,
+    grossProfit: null,
+    grossMargin: null,
+    costCoverage: 0,
 });
 
 const store = (code: string, sales: number, share: number) => ({
@@ -20,6 +23,9 @@ const store = (code: string, sales: number, share: number) => ({
     itemCount: 2,
     share,
     topItem: 'LATTE',
+    grossProfit: null,
+    grossMargin: null,
+    costCoverage: 0,
 });
 
 const item = (code: string, sales: number, share: number) => ({
@@ -30,6 +36,9 @@ const item = (code: string, sales: number, share: number) => ({
     sales,
     share,
     averagePrice: sales / 10,
+    grossProfit: null,
+    grossMargin: null,
+    costCoverage: 0,
     storeCount: 2,
 });
 

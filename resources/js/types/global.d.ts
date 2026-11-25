@@ -1,4 +1,4 @@
-import type { Auth } from '@/types/auth';
+import type { Auth, SalesStatus } from '@/types/auth';
 
 declare module 'react' {
     interface InputHTMLAttributes<T> {
@@ -12,6 +12,8 @@ declare module '@inertiajs/core' {
             name: string;
             auth: Auth;
             sidebarOpen: boolean;
+            /** Company users only. */
+            sales: SalesStatus | null;
             [key: string]: unknown;
         };
     }

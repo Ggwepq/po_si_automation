@@ -30,5 +30,5 @@ export default function SalesReportPage(props: Props) {
 }
 
 SalesReportPage.layout = {
-    breadcrumbs: [{ title: 'Sales report', href: reportRoute() }],
+    breadcrumbs: [{ title: 'Sales overview', href: reportRoute() }],
 };

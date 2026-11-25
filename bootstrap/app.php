@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureCompanyHasWorkbookTools;
 use App\Http\Middleware\EnsureUserBelongsToCompany;
 use App\Http\Middleware\EnsureUserIsSuperAdmin;
 use App\Http\Middleware\HandleAppearance;
@@ -19,8 +20,14 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
+        // Guests opening the admin area are sent to the admin login page.
+        $middleware->redirectGuestsTo(fn (Request $request) => $request->is('admin', 'admin/*')
+            ? route('admin.login')
+            : route('login'));
+
         $middleware->alias([
             'company' => EnsureUserBelongsToCompany::class,
+            'workbook-tools' => EnsureCompanyHasWorkbookTools::class,
             'super-admin' => EnsureUserIsSuperAdmin::class,
         ]);
 

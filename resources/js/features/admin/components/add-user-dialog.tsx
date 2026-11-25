@@ -36,9 +36,12 @@ export function AddUserDialog({ company }: { company: CompanyBrand }) {
                 <DialogHeader>
                     <DialogTitle>Add a user to {company.name}</DialogTitle>
                     <DialogDescription>
-                        They log in on the usual login page and see only{' '}
-                        {company.name}'s data. Share the password with them
-                        privately; they can change it under Settings.
+                        They log in with their email
+                        {company.accountNumber
+                            ? ` or account number ${company.accountNumber} (when they are the only user)`
+                            : ''}{' '}
+                        and see only {company.name}'s data. Share the password
+                        with them privately; they can change it under Settings.
                     </DialogDescription>
                 </DialogHeader>
                 <Form

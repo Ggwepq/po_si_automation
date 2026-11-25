@@ -19,16 +19,24 @@ use Illuminate\Support\Carbon;
  *
  * @property int $id
  * @property string $name
+ * @property string|null $account_number SM Vendor Portal number, used to log in
  * @property string $slug
  * @property string|null $logo_path
+ * @property bool $workbook_tools PO & SI workflow and RA item matching
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'slug', 'logo_path'])]
+#[Fillable(['name', 'account_number', 'slug', 'logo_path', 'workbook_tools'])]
 class Company extends Model
 {
     /** @use HasFactory<CompanyFactory> */
     use HasFactory;
+
+    /** @return array<string, string> */
+    protected function casts(): array
+    {
+        return ['workbook_tools' => 'boolean'];
+    }
 
     /** @return HasMany<User, $this> */
     public function users(): HasMany
@@ -36,15 +44,31 @@ class Company extends Model
         return $this->hasMany(User::class);
     }
 
+    /**
+     * Vendor codes this company may import DSRs for: its own account number.
+     * A company without one (not set up yet) is not restricted.
+     */
+    public function ownsVendor(string $vendorCode): bool
+    {
+        return $this->account_number === null || trim($vendorCode) === $this->account_number;
+    }
+
     public function logoUrl(): ?string
     {
         return $this->logo_path === null ? null : asset($this->logo_path);
     }
 
-    /** @return array{id: int, name: string, slug: string, logoUrl: string|null} */
+    /** @return array{id: int, name: string, accountNumber: string|null, slug: string, logoUrl: string|null, workbookTools: bool} */
     public function toBrand(): array
     {
-        return ['id' => $this->id, 'name' => $this->name, 'slug' => $this->slug, 'logoUrl' => $this->logoUrl()];
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'accountNumber' => $this->account_number,
+            'slug' => $this->slug,
+            'logoUrl' => $this->logoUrl(),
+            'workbookTools' => $this->workbook_tools,
+        ];
     }
 
     protected static function newFactory(): CompanyFactory

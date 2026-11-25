@@ -32,7 +32,11 @@ class CompanyController extends Controller
 
     public function store(StoreCompanyRequest $request, CreateCompany $createCompany): RedirectResponse
     {
-        $company = $createCompany->handle($request->string('name')->toString(), $request->logo());
+        $company = $createCompany->handle(
+            $request->string('name')->toString(),
+            $request->string('account_number')->toString(),
+            $request->logo(),
+        );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => "{$company->name} added. Now add its users."]);
 

@@ -24,4 +24,10 @@ class CompanyFactory extends Factory
             'logo_path' => null,
         ];
     }
+
+    /** Has the PO & SI workflow and RA item matching, like Oroza Enterprise. */
+    public function withWorkbookTools(): static
+    {
+        return $this->state(['workbook_tools' => true]);
+    }
 }

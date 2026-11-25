@@ -319,6 +319,10 @@ sales report. How the pieces fit:
   `SalesScope`). Never read company data without it. The admin area
   (`super-admin` middleware) manages companies and accounts only.
 - `company_id` and `is_super_admin` are never mass-assignable from requests.
+- Login (`App\Actions\Fortify\AuthenticateUser`): `/login` accepts only
+  company users (account number or email); `/admin/login` (portal=admin)
+  accepts only super admins. Imports are limited to the company's own
+  vendor number (`VendorGuard`).
 - Every route that shows data sits behind `auth` + `verified` middleware.
 - Validate all input with Form Requests; authorise anything user-specific.
 - Secrets live in `.env` only (never committed). Use `config()` in code, not

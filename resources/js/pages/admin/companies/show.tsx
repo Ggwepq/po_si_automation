@@ -17,9 +17,16 @@ export default function CompanyPage({ company, users }: Props) {
             <div className="grid grid-cols-1 gap-6 p-4">
                 <header className="flex items-center gap-4">
                     <CompanyLogo company={company} className="h-12" />
-                    <h1 className="text-2xl font-semibold tracking-tight">
-                        {company.name}
-                    </h1>
+                    <div>
+                        <h1 className="text-2xl font-semibold tracking-tight">
+                            {company.name}
+                        </h1>
+                        {company.accountNumber && (
+                            <p className="text-sm text-muted-foreground">
+                                Account no. {company.accountNumber}
+                            </p>
+                        )}
+                    </div>
                 </header>
                 <CompanyUsers company={company} users={users} />
             </div>

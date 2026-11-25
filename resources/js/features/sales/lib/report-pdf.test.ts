@@ -10,6 +10,9 @@ const totals = (sales: number): SalesTotals => ({
     storeCount: 2,
     salesDays: 1,
     averageDailySales: sales,
+    grossProfit: null,
+    grossMargin: null,
+    costCoverage: 0,
 });
 
 const items = Array.from({ length: 30 }, (_, i) => ({
@@ -20,6 +23,9 @@ const items = Array.from({ length: 30 }, (_, i) => ({
     sales: (30 - i) * 10,
     share: 3.33,
     averagePrice: 10,
+    grossProfit: null,
+    grossMargin: null,
+    costCoverage: 0,
     storeCount: 2,
 }));
 
@@ -38,6 +44,9 @@ const report: SalesReport = {
             itemCount: 30,
             share: 64.5,
             topItem: 'DEMO ITEM 0',
+            grossProfit: null,
+            grossMargin: null,
+            costCoverage: 0,
         },
         {
             code: '0002',
@@ -48,6 +57,9 @@ const report: SalesReport = {
             itemCount: 20,
             share: 35.5,
             topItem: 'DEMO ITEM 1',
+            grossProfit: null,
+            grossMargin: null,
+            costCoverage: 0,
         },
     ],
     items,

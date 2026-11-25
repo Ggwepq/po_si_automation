@@ -1,6 +1,11 @@
 import { ArrowDownRight, ArrowUpRight, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { formatMoney, formatQty, percentChange } from '../lib/format';
+import {
+    formatMoney,
+    formatPercent,
+    formatQty,
+    percentChange,
+} from '../lib/format';
 import type { SalesTotals } from '../lib/types';
 
 type Card = {
@@ -81,10 +86,30 @@ export function SummaryCards({
         },
     ];
 
+    if (summary.grossProfit !== null) {
+        cards.push({
+            label: 'Gross profit',
+            value: formatMoney(summary.grossProfit),
+            change:
+                previous.grossProfit === null
+                    ? null
+                    : percentChange(summary.grossProfit, previous.grossProfit),
+            hint:
+                summary.costCoverage < 100
+                    ? `${formatPercent(summary.grossMargin ?? 0)} margin · costs cover ${formatPercent(summary.costCoverage)} of sales`
+                    : `${formatPercent(summary.grossMargin ?? 0)} margin`,
+        });
+    }
+
     return (
         <section
             aria-label="Summary"
-            className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5 print:grid-cols-3"
+            className={cn(
+                'grid grid-cols-1 gap-3 sm:grid-cols-2 print:grid-cols-3',
+                cards.length > 5
+                    ? 'lg:grid-cols-3 xl:grid-cols-6'
+                    : 'lg:grid-cols-5',
+            )}
         >
             {cards.map((card) => (
                 <div

@@ -8,8 +8,11 @@ import {
 } from '@/components/ui/table';
 import { formatMoney, formatPercent, formatQty } from '../lib/format';
 import type { ItemSales, StoreSales } from '../lib/types';
+import { ProfitCells } from './profit-cells';
 
 export function StoresTable({ stores }: { stores: StoreSales[] }) {
+    const hasCosts = stores.some((store) => store.grossProfit !== null);
+
     return (
         <div className="rounded-xl border">
             <Table>
@@ -19,6 +22,16 @@ export function StoresTable({ stores }: { stores: StoreSales[] }) {
                         <TableHead>Company</TableHead>
                         <TableHead className="text-right">Qty sold</TableHead>
                         <TableHead className="text-right">Sales</TableHead>
+                        {hasCosts && (
+                            <>
+                                <TableHead className="text-right">
+                                    Gross profit
+                                </TableHead>
+                                <TableHead className="text-right">
+                                    Margin
+                                </TableHead>
+                            </>
+                        )}
                         <TableHead className="text-right">Share</TableHead>
                         <TableHead className="text-right">Items</TableHead>
                         <TableHead>Best seller</TableHead>
@@ -40,6 +53,12 @@ export function StoresTable({ stores }: { stores: StoreSales[] }) {
                             <TableCell className="text-right tabular-nums">
                                 {formatMoney(store.sales)}
                             </TableCell>
+                            {hasCosts && (
+                                <ProfitCells
+                                    grossProfit={store.grossProfit}
+                                    grossMargin={store.grossMargin}
+                                />
+                            )}
                             <TableCell className="text-right tabular-nums">
                                 {formatPercent(store.share)}
                             </TableCell>
@@ -57,7 +76,7 @@ export function StoresTable({ stores }: { stores: StoreSales[] }) {
                     {!stores.length && (
                         <TableRow>
                             <TableCell
-                                colSpan={7}
+                                colSpan={hasCosts ? 9 : 7}
                                 className="py-10 text-center text-muted-foreground"
                             >
                                 No store sales in this period.

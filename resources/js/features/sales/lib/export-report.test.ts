@@ -10,6 +10,9 @@ const totals = (sales: number): SalesTotals => ({
     storeCount: 1,
     salesDays: 1,
     averageDailySales: sales,
+    grossProfit: null,
+    grossMargin: null,
+    costCoverage: 0,
 });
 
 const report: SalesReport = {
@@ -27,6 +30,9 @@ const report: SalesReport = {
             itemCount: 2,
             share: 100,
             topItem: 'Latte',
+            grossProfit: null,
+            grossMargin: null,
+            costCoverage: 0,
         },
     ],
     items: [
@@ -38,6 +44,9 @@ const report: SalesReport = {
             sales: 240,
             share: 80,
             averagePrice: 30,
+            grossProfit: null,
+            grossMargin: null,
+            costCoverage: 0,
             storeCount: 1,
         },
         {
@@ -48,6 +57,9 @@ const report: SalesReport = {
             sales: 60,
             share: 20,
             averagePrice: 30,
+            grossProfit: null,
+            grossMargin: null,
+            costCoverage: 0,
             storeCount: 1,
         },
     ],
@@ -101,5 +113,35 @@ describe('reportWorkbook', () => {
         ]);
         expect(rows('Items')[2][3]).toBe('');
         expect(rows('Stores')[1][7]).toBe('Latte');
+    });
+
+    it('adds gross profit columns once costs are set', () => {
+        const costed: SalesReport = {
+            ...report,
+            summary: {
+                ...report.summary,
+                grossProfit: 90,
+                grossMargin: 37.5,
+                costCoverage: 80,
+            },
+            items: [
+                { ...report.items[0], grossProfit: 90, grossMargin: 37.5 },
+                report.items[1],
+            ],
+        };
+        const workbook = XLSX.read(
+            XLSX.write(reportWorkbook(costed, period, 'All stores'), {
+                type: 'buffer',
+                bookType: 'xlsx',
+            }),
+        );
+        const items = XLSX.utils.sheet_to_json<unknown[]>(
+            workbook.Sheets.Items,
+            { header: 1, defval: '' },
+        );
+
+        expect(items[0].slice(-2)).toEqual(['Gross Profit', 'Margin %']);
+        expect(items[1].slice(-2)).toEqual([90, 37.5]);
+        expect(items[2].slice(-2)).toEqual(['', '']);
     });
 });

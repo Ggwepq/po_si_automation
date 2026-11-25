@@ -1,51 +1,52 @@
 import {
     Building2,
     ChartPie,
+    Coins,
     FileCheck2,
     FileUp,
-    LayoutGrid,
+    HandCoins,
     ListChecks,
-    TrendingUp,
-    Workflow,
 } from 'lucide-react';
-import { dashboard, poMatching, raMatching } from '@/routes';
+import { poMatching, raMatching } from '@/routes';
 import { index as adminCompanies } from '@/routes/admin/companies';
 import {
+    costs as salesCosts,
     importMethod as salesImport,
+    liquidation as salesLiquidation,
     report as salesReport,
 } from '@/routes/sales';
-import type { NavEntry } from '@/types';
+import type { CompanyBrand, NavSection } from '@/types';
 
 /** Super admins manage companies and accounts only. */
-export const adminNavItems: NavEntry[] = [
-    { title: 'Companies', href: adminCompanies(), icon: Building2 },
+export const adminNavSections: NavSection[] = [
+    {
+        label: 'Administration',
+        items: [
+            { title: 'Companies', href: adminCompanies(), icon: Building2 },
+        ],
+    },
 ];
 
 /** Company users: everything here shows their own company's data. */
-export const mainNavItems: NavEntry[] = [
-    { title: 'Dashboard', href: dashboard(), icon: LayoutGrid },
-    {
-        title: 'Sales',
-        icon: TrendingUp,
+export function companyNavSections(company: CompanyBrand | null): NavSection[] {
+    const sales: NavSection = {
+        label: 'Sales',
         items: [
-            { title: 'Sales report', href: salesReport(), icon: ChartPie },
-            { title: 'Import DSR', href: salesImport(), icon: FileUp },
+            { title: 'Overview', href: salesReport(), icon: ChartPie },
+            { title: 'Liquidation', href: salesLiquidation(), icon: HandCoins },
+            { title: 'Import', href: salesImport(), icon: FileUp },
+            { title: 'Product costs', href: salesCosts(), icon: Coins },
         ],
-    },
-    {
-        title: 'Automate',
-        icon: Workflow,
+    };
+
+    // PO & SI workflow and RA item matching: Oroza Enterprise only.
+    const tools: NavSection = {
+        label: 'Tools',
         items: [
-            {
-                title: 'PO & SI workflow',
-                href: poMatching(),
-                icon: FileCheck2,
-            },
-            {
-                title: 'RA item matching',
-                href: raMatching(),
-                icon: ListChecks,
-            },
+            { title: 'PO & SI workflow', href: poMatching(), icon: FileCheck2 },
+            { title: 'RA item matching', href: raMatching(), icon: ListChecks },
         ],
-    },
-];
+    };
+
+    return company?.workbookTools ? [sales, tools] : [sales];
+}

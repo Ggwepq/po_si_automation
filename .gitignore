@@ -41,3 +41,7 @@ yarn-error.log
 /boost.json
 /opencode.json
 /opencode.jsonc
+
+# Real business files used as samples (DSRs, sales reports, costs). Never commit
+# or serve them: they hold sales, prices and personal data.
+/samples

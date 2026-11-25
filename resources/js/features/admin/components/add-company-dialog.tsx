@@ -61,6 +61,26 @@ export function AddCompanyDialog() {
                             </div>
 
                             <div className="grid gap-2">
+                                <Label htmlFor="company-account-number">
+                                    Account number
+                                </Label>
+                                <Input
+                                    id="company-account-number"
+                                    name="account_number"
+                                    required
+                                    maxLength={20}
+                                    inputMode="numeric"
+                                    placeholder="e.g. 150551"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    The company's SM Vendor Portal number. Its
+                                    users can log in with it, and only DSRs for
+                                    this vendor can be imported.
+                                </p>
+                                <InputError message={errors.account_number} />
+                            </div>
+
+                            <div className="grid gap-2">
                                 <Label htmlFor="company-logo">
                                     Logo (optional)
                                 </Label>

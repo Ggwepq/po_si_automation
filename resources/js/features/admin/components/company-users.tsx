@@ -7,19 +7,28 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import type { CompanyBrand } from '@/types';
 import type { CompanyUserRow, Paginated } from '../types';
+import { AddUserDialog } from './add-user-dialog';
 import { PageLinks } from './page-links';
 
-export function CompanyUsers({ users }: { users: Paginated<CompanyUserRow> }) {
+export function CompanyUsers({
+    company,
+    users,
+}: {
+    company: CompanyBrand;
+    users: Paginated<CompanyUserRow>;
+}) {
     return (
         <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between gap-4">
                 <CardTitle>Users</CardTitle>
+                <AddUserDialog company={company} />
             </CardHeader>
             <CardContent className="grid gap-4">
                 {users.data.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
-                        No users yet. Add one so this company can log in.
+                        No users yet. Use Add user so this company can log in.
                     </p>
                 ) : (
                     <div className="overflow-x-auto rounded-lg border">

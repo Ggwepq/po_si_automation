@@ -1,35 +1,50 @@
 import { Form } from '@inertiajs/react';
+import { UserPlus } from 'lucide-react';
+import { useState } from 'react';
 import CompanyUserController from '@/actions/App/Http/Controllers/Admin/CompanyUserController';
 import InputError from '@/components/input-error';
 import PasswordInput from '@/components/password-input';
 import { Button } from '@/components/ui/button';
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import type { CompanyBrand } from '@/types';
 
-export function AddUserForm({ company }: { company: CompanyBrand }) {
+/** "Add user" button that opens the form in a dialog. */
+export function AddUserDialog({ company }: { company: CompanyBrand }) {
+    const [open, setOpen] = useState(false);
+
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Add a user</CardTitle>
-                <CardDescription>
-                    They log in on the usual login page and see only{' '}
-                    {company.name}'s data. Share the password with them
-                    privately; they can change it under Settings.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button size="sm">
+                    <UserPlus />
+                    Add user
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Add a user to {company.name}</DialogTitle>
+                    <DialogDescription>
+                        They log in on the usual login page and see only{' '}
+                        {company.name}'s data. Share the password with them
+                        privately; they can change it under Settings.
+                    </DialogDescription>
+                </DialogHeader>
                 <Form
                     {...CompanyUserController.store.form(company.slug)}
                     resetOnSuccess
+                    onSuccess={() => setOpen(false)}
                     options={{ preserveScroll: true }}
                     className="grid gap-4"
                 >
@@ -81,18 +96,21 @@ export function AddUserForm({ company }: { company: CompanyBrand }) {
                                 />
                             </div>
 
-                            <Button
-                                type="submit"
-                                disabled={processing}
-                                className="justify-self-start"
-                            >
-                                {processing && <Spinner />}
-                                Add user
-                            </Button>
+                            <DialogFooter>
+                                <DialogClose asChild>
+                                    <Button type="button" variant="outline">
+                                        Cancel
+                                    </Button>
+                                </DialogClose>
+                                <Button type="submit" disabled={processing}>
+                                    {processing && <Spinner />}
+                                    Add user
+                                </Button>
+                            </DialogFooter>
                         </>
                     )}
                 </Form>
-            </CardContent>
-        </Card>
+            </DialogContent>
+        </Dialog>
     );
 }

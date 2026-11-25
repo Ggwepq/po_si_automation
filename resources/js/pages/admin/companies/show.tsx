@@ -1,6 +1,5 @@
 import { Head } from '@inertiajs/react';
 import { CompanyLogo } from '@/components/brand-logo';
-import { AddUserForm } from '@/features/admin/components/add-user-form';
 import { CompanyUsers } from '@/features/admin/components/company-users';
 import type { CompanyUserRow, Paginated } from '@/features/admin/types';
 import { index } from '@/routes/admin/companies';
@@ -22,10 +21,7 @@ export default function CompanyPage({ company, users }: Props) {
                         {company.name}
                     </h1>
                 </header>
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
-                    <CompanyUsers users={users} />
-                    <AddUserForm company={company} />
-                </div>
+                <CompanyUsers company={company} users={users} />
             </div>
         </>
     );

@@ -128,6 +128,16 @@ it('adds a verified user to a company', function () {
         ->assertRedirect(route('dashboard', absolute: false));
 });
 
+it('accepts any password the admin chooses', function () {
+    $company = Company::factory()->create();
+
+    $this->actingAs(superAdmin())
+        ->post(route('admin.companies.users.store', $company), newUserInput(['password' => 'abc', 'password_confirmation' => 'abc']))
+        ->assertSessionHasNoErrors();
+
+    expect($company->users()->sole()->email)->toBe('juan@example.com');
+});
+
 it('validates new users', function () {
     $company = Company::factory()->create();
     User::factory()->create(['email' => 'taken@example.com']);

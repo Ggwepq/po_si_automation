@@ -4,6 +4,7 @@ import CompanyController from '@/actions/App/Http/Controllers/Admin/CompanyContr
 import { CompanyLogo } from '@/components/brand-logo';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { CompanyRow, Paginated } from '../types';
+import { AddCompanyDialog } from './add-company-dialog';
 import { PageLinks } from './page-links';
 
 export function CompanyList({
@@ -13,13 +14,15 @@ export function CompanyList({
 }) {
     return (
         <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between gap-4">
                 <CardTitle>Companies</CardTitle>
+                <AddCompanyDialog />
             </CardHeader>
             <CardContent className="grid gap-4">
                 {companies.data.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
-                        No companies yet. Add the first one.
+                        No companies yet. Use Add company to create the first
+                        one.
                     </p>
                 ) : (
                     <ul className="divide-y rounded-lg border">
